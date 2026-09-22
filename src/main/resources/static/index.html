@@ -47,6 +47,14 @@
        isso impedia o encolhimento e alargava a página inteira no celular. */
     input, select, textarea { min-width: 0; }
 
+    /* 100vh no mobile conta o espaço da barra de endereço do navegador, então
+       em páginas com pouco conteúdo o container ficava mais alto que a área
+       visível e a barra "sticky bottom-0" grudava no fundo desse container
+       maior, não no fundo real da tela — sobrava espaço em branco embaixo e
+       parecia que a barra "subia". 100dvh acompanha a área visível de verdade;
+       min-height acima é fallback pra navegador sem suporte a dvh. */
+    .app-shell { min-height: 100vh; min-height: 100dvh; }
+
     @media (max-width: 640px){
       button, a, input, select { font-size: 16px; }
     }
@@ -1200,7 +1208,7 @@
     const trocoTotal = trocoCarros + trocoMotos;
 
     return (
-            <div className="min-h-screen flex flex-col">
+            <div className="app-shell flex flex-col">
               <Header navId={navId} irPara={irPara} theme={theme} setTheme={setTheme} />
 
               {/* pb-24 no mobile: espaço para o menu fixo de baixo não cobrir

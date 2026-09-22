@@ -40,6 +40,18 @@ UPDATE pagamento SET troco = 0 WHERE troco IS NULL;
 -- 3) Índice para carregar os pagamentos de um veículo rápido.
 CREATE INDEX IF NOT EXISTS idx_pagamento_auto_id ON pagamento(auto_id);
 
+-- 4) Blacklist: veículos que saíram sem pagar (com foto opcional em base64).
+--    Precisa desta tabela porque em produção o Hibernate está com
+--    ddl-auto=none (não cria tabela nova sozinho).
+CREATE TABLE IF NOT EXISTS blacklist (
+    id        VARCHAR(255) PRIMARY KEY,
+    placa     VARCHAR(255) NOT NULL,
+    motivo    VARCHAR(500),
+    foto      TEXT,
+    criado_em BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_blacklist_criado_em ON blacklist(criado_em DESC);
+
 -- 4) (Opcional) Se você usa RLS no Supabase e o backend conecta como service
 --    role, pode ignorar. Caso precise de acesso público:
 -- ALTER TABLE auto_model ENABLE ROW LEVEL SECURITY;

@@ -43,50 +43,23 @@
     ::-webkit-scrollbar{ width:10px; height:10px }
     ::-webkit-scrollbar-thumb{ background:rgba(100,100,100,.25); border-radius:999px }
     ::-webkit-scrollbar-track{ background:transparent }
+    /* Campos têm largura intrínseca (~240px, o "size=20" padrão). Em grid/flex
+       isso impedia o encolhimento e alargava a página inteira no celular. */
+    input, select, textarea { min-width: 0; }
+
     @media (max-width: 640px){
       button, a, input, select { font-size: 16px; }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-blue-200 dark:selection:bg-blue-800/60">
+<body class="bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 selection:bg-blue-200 dark:selection:bg-blue-800/60">
 <!--
-  IMPORTANTE: tudo aqui fora (header/footer) está FORA da árvore do React,
-  então os ícones precisam ser <i data-lucide="..."></i> (HTML puro),
-  nunca <Icon .../> (isso só existe dentro do <script type="text/babel">).
-  O window.lucide.createIcons() no fim do arquivo é quem renderiza estes.
+  Tudo (header, conteúdo e menu de baixo) é renderizado pelo React dentro de
+  #root. O menu virou troca de ABA (uma tela por item), não mais âncora
+  "#secao" — âncora não funcionava em WebView/alguns navegadores e, mesmo
+  funcionando, dava a impressão de que o botão não fazia nada.
 -->
-<header class="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/60 border-b border-slate-200/60 dark:border-slate-800">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-    <div class="flex items-center gap-2 font-extrabold tracking-tight text-lg sm:text-xl">
-        <span class="inline-flex size-8 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-glow animate-pop">
-          <i data-lucide="parking-square" class="w-5 h-5"></i>
-        </span>
-      <a href="#inicio" class="hover:opacity-80 transition">Estaciona+</a>
-    </div>
-    <nav class="ml-auto hidden sm:flex items-center gap-2 text-sm">
-      <a href="#inicio" class="px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">Início</a>
-      <a href="#placas" class="px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">Placas</a>
-      <a href="#relatorios" class="px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">Relatórios</a>
-      <a href="#config" class="px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">Config</a>
-    </nav>
-    <button id="themeToggle" class="ml-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm">
-      <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
-      <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
-      <span class="hidden sm:inline">Tema</span>
-    </button>
-  </div>
-</header>
-
-<main id="root" class="max-w-6xl mx-auto px-3 sm:px-6 py-6"></main>
-
-<footer class="sticky bottom-0 z-40 md:hidden backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/60 border-t border-slate-200/60 dark:border-slate-800">
-  <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-around text-xs">
-    <a href="#inicio" class="flex flex-col items-center gap-1 p-2 rounded-xl active:scale-95 transition"><i data-lucide="home" class="w-5 h-5"></i>Início</a>
-    <a href="#placas" class="flex flex-col items-center gap-1 p-2 rounded-xl active:scale-95 transition"><i data-lucide="list-checks" class="w-5 h-5"></i>Placas</a>
-    <a href="#relatorios" class="flex flex-col items-center gap-1 p-2 rounded-xl active:scale-95 transition"><i data-lucide="pie-chart" class="w-5 h-5"></i>Relatórios</a>
-    <a href="#config" class="flex flex-col items-center gap-1 p-2 rounded-xl active:scale-95 transition"><i data-lucide="settings" class="w-5 h-5"></i>Config</a>
-  </div>
-</footer>
+<div id="root"></div>
 
 <script type="text/babel">
   const { useState, useEffect, useMemo, useRef } = React;
@@ -107,6 +80,23 @@
   }
 
   const API_BASE = '/Automoveis';
+
+  // "Início" já traz tudo que é preciso para operar (resumo + cadastro +
+  // lista), por isso não existe um botão "Placas" separado.
+  const ABAS = [
+    { id:'inicio',     label:'Início',     icon:'home' },
+    { id:'relatorios', label:'Relatórios', icon:'pie-chart' },
+    { id:'blacklist',  label:'Blacklist',  icon:'ban' },
+    { id:'config',     label:'Config',     icon:'settings' },
+  ];
+
+  // Estas abrem em tela própria; o resto fica na inicial.
+  const TELAS_PROPRIAS = ['relatorios', 'blacklist', 'config'];
+
+  function navDoHash(){
+    const h = (location.hash || '').replace('#', '');
+    return ABAS.some(a => a.id === h) ? h : 'inicio';
+  }
 
   const METODOS_PAGAMENTO = [
     { value: 'dinheiro', label: 'Dinheiro' },
@@ -136,6 +126,34 @@
   // Total de troco devolvido — só informativo, para o fechamento de caixa.
   function somaTroco(pagamentos){
     return (pagamentos || []).reduce((s, p) => s + (Number(p.troco) || 0), 0);
+  }
+
+  // Redimensiona a foto no navegador (canvas nativo) antes de mandar pro
+  // servidor — sem isso uma foto de celular (4-8MB) viraria uma linha gigante
+  // de base64 no banco. Devolve um data URL JPEG já pequeno.
+  function resizeImageFile(file, maxDim = 900, quality = 0.75){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Falha ao ler o arquivo'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Arquivo não é uma imagem válida'));
+        img.onload = () => {
+          let { width, height } = img;
+          if(width > maxDim || height > maxDim){
+            const escala = maxDim / Math.max(width, height);
+            width = Math.round(width * escala);
+            height = Math.round(height * escala);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   // Compatibiliza itens vindos do back-end antigo (campo único
@@ -176,15 +194,17 @@
   // --------- Componentes ---------
   function StatCard({icon, label, value, sub}){
     return (
-            <div className="group p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 shadow-sm hover:shadow-md transition animate-fadeIn">
+            <div className="group p-3 sm:p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40 shadow-sm hover:shadow-md transition animate-fadeIn">
               <div className="flex items-center gap-2 sm:gap-3">
-            <span className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-blue-600/10 text-blue-700 dark:text-blue-300">
+            <span className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-blue-600/10 text-blue-700 dark:text-blue-300">
               <Icon name={icon} className="w-5 h-5" />
             </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] sm:text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{label}</div>
-                  <div className="text-lg sm:text-2xl font-semibold truncate">{value}</div>
-                  {sub && <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">{sub}</div>}
+                  <div className="text-[11px] sm:text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 truncate">{label}</div>
+                  {/* text-[15px] no celular: "R$ 1.234,56" não cabia em text-lg
+                      dentro de um card de 2 colunas e saía cortado. */}
+                  <div className="text-[15px] sm:text-2xl font-semibold truncate">{value}</div>
+                  {sub && <div className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 sm:mt-1">{sub}</div>}
                 </div>
               </div>
             </div>
@@ -198,7 +218,7 @@
       {id:'moto', label:'Motos', icon:'motorbike'},
     ];
     return (
-            <div className="flex w-full overflow-x-auto gap-2 pb-1 -mx-1 px-1">
+            <div className="flex w-full min-w-0 overflow-x-auto gap-2 pb-1">
               {tabs.map(t => (
                       <button key={t.id}
                               onClick={() => setTab(t.id)}
@@ -206,7 +226,7 @@
                                       'shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border transition ' +
                                       (tab===t.id
                                               ? 'bg-blue-600 text-white border-blue-600 shadow-glow'
-                                              : 'bg-white/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800')
+                                              : 'bg-white/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800')
                               }>
                         <Icon name={t.icon} className="w-4 h-4" />
                         <span>{t.label}</span>
@@ -223,7 +243,7 @@
       {id:'pendentes', label:'Pendentes', icon:'clock'},
     ];
     return (
-            <div className="flex w-full overflow-x-auto gap-2 pb-1 -mx-1 px-1">
+            <div className="flex w-full min-w-0 overflow-x-auto gap-2 pb-1">
               {filters.map(f => (
                       <button key={f.id}
                               onClick={() => setPaymentFilter(f.id)}
@@ -231,7 +251,7 @@
                                       'shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl border transition ' +
                                       (paymentFilter===f.id
                                               ? 'bg-blue-600 text-white border-blue-600 shadow-glow'
-                                              : 'bg-white/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800')
+                                              : 'bg-white/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800')
                               }>
                         <Icon name={f.icon} className="w-4 h-4" />
                         <span>{f.label}</span>
@@ -270,32 +290,37 @@
     }
 
     return (
-            <div className="grid gap-2 p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-1 gap-2 p-3 rounded-xl bg-zinc-100/70 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
               {pagamentos.length === 0 && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Nenhuma forma de pagamento adicionada ainda.</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">Nenhuma forma de pagamento adicionada ainda.</div>
               )}
               {pagamentos.map(p => (
-                      <div key={p.id} className="flex flex-wrap items-center gap-2">
-                        <select value={p.metodo} onChange={e=>updateLinha(p.id,'metodo',e.target.value)}
-                                className="flex-1 min-w-[110px] px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm">
-                          {METODOS_PAGAMENTO.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                        </select>
-                        <label className="flex items-center gap-1 flex-1 min-w-[90px]">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">R$</span>
-                          <input type="number" step="0.01" min="0" placeholder="0,00" value={p.valor}
-                                 onChange={e=>updateLinha(p.id,'valor', e.target.value.replace(',','.'))}
-                                 className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-4 focus:ring-blue-500/20"/>
-                        </label>
-                        {p.metodo === 'dinheiro' && (
-                                <label className="flex items-center gap-1 flex-1 min-w-[90px]" title="Troco devolvido ao cliente (dinheiro pago a mais)">
-                                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Troco</span>
-                                  <input type="number" step="0.01" min="0" placeholder="0,00" value={p.troco ?? ''}
-                                         onChange={e=>updateLinha(p.id,'troco', e.target.value.replace(',','.'))}
-                                         className="w-full px-2 py-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-4 focus:ring-amber-500/20"/>
-                                </label>
-                        )}
+                      // items-start + botão fora do grupo que quebra linha: o "×" fica
+                      // sempre colado no topo-direita da linha, nunca solto sozinho
+                      // numa linha própria quando método+valor+troco não cabem juntos.
+                      <div key={p.id} className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                          <select value={p.metodo} onChange={e=>updateLinha(p.id,'metodo',e.target.value)}
+                                  className="flex-1 min-w-[84px] px-2 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm">
+                            {METODOS_PAGAMENTO.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                          </select>
+                          <label className="flex items-center gap-1 flex-1 min-w-[76px]">
+                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">R$</span>
+                            <input type="number" step="0.01" min="0" placeholder="0,00" value={p.valor}
+                                   onChange={e=>updateLinha(p.id,'valor', e.target.value.replace(',','.'))}
+                                   className="w-full min-w-0 px-2 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                          </label>
+                          {p.metodo === 'dinheiro' && (
+                                  <label className="flex items-center gap-1 flex-1 min-w-[76px]" title="Troco devolvido ao cliente (dinheiro pago a mais)">
+                                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Troco</span>
+                                    <input type="number" step="0.01" min="0" placeholder="0,00" value={p.troco ?? ''}
+                                           onChange={e=>updateLinha(p.id,'troco', e.target.value.replace(',','.'))}
+                                           className="w-full min-w-0 px-2 py-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-white dark:bg-zinc-900 text-sm outline-none focus:ring-4 focus:ring-amber-500/20"/>
+                                  </label>
+                          )}
+                        </div>
                         <button type="button" onClick={()=>removeLinha(p.id)} title="Remover"
-                                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
+                                className="shrink-0 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600">
                           <Icon name="x" className="w-4 h-4" />
                         </button>
                       </div>
@@ -376,40 +401,41 @@
 
       setSaving(true);
       try{
-        await onAdd(novo);
-        setPlaca('');
-        setValor('');
-        setPago(false);
-        setTipo('carro');
-        setPagamentos([]);
+        if(await onAdd(novo)){
+          setPlaca('');
+          setValor('');
+          setPago(false);
+          setTipo('carro');
+          setPagamentos([]);
+        }
       } finally {
         setSaving(false);
       }
     }
 
     return (
-            <form onSubmit={handleSubmit} className="grid gap-3 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 animate-fadeIn">
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-12 md:items-end">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 min-w-0 p-3 sm:p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40 animate-fadeIn">
+              <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 md:grid-cols-12 md:items-end">
                 <div className="md:col-span-3">
-                  <label className="text-xs text-slate-500 dark:text-slate-400">Placa</label>
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Placa</label>
                   <input value={placa} onChange={e=>setPlaca(e.target.value)} placeholder="ABC-1234"
-                         className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                         className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Tipo</label>
                   <select value={tipo} onChange={e=>setTipo(e.target.value)}
-                          className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20">
+                          className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20">
                     <option value="carro">Carro</option>
                     <option value="moto">Moto</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-slate-500 dark:text-slate-400">Valor (R$)</label>
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor (R$)</label>
                   <input value={valor} onChange={e=>setValor(e.target.value.replace(',','.'))} type="number" step="0.01" min="0" placeholder="0,00"
-                         className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                         className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
                 </div>
                 <div className="flex items-center gap-2 sm:col-span-2 md:col-span-2">
-                  <input id="pago" type="checkbox" checked={pago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600"/>
+                  <input id="pago" type="checkbox" checked={pago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-blue-600"/>
                   <label htmlFor="pago" className="text-sm">Já pago na entrada</label>
                 </div>
                 <div className="sm:col-span-2 md:col-span-1 flex justify-end">
@@ -505,61 +531,66 @@
     }
 
     return (
-            <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 hover:shadow-sm transition animate-fadeIn">
-              <div className="flex items-center gap-3 flex-wrap">
+            <div className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40 hover:shadow-sm transition animate-fadeIn">
+              <div className="flex items-center gap-3">
             <span className={'inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-xl '+(item.tipo==='carro' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300')}>
               <Icon name={item.tipo==='carro'?'car':'motorbike'} className="w-5 h-5" />
             </span>
-                <div className="flex-1 min-w-[110px]">
+                <div className="flex-1 min-w-0">
                   <div className="font-semibold tracking-wide">{item.placa}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{new Date(item.entrada).toLocaleString('pt-BR')}</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(item.entrada).toLocaleString('pt-BR')}</div>
                 </div>
+              </div>
 
-                <div className="text-right ml-auto sm:ml-0">
-                  <div className={"text-sm font-medium "+(item.pago?'text-emerald-600 dark:text-emerald-400':'text-amber-600 dark:text-amber-400')}>
-                    {item.pago
-                            ? ('Pago (' + (item.pagamentos||[]).map(p => metodoLabel(p.metodo) + ' ' + formatBRL(p.valor)).join(' + ')
-                                    + (trocoLinha > 0 ? ' · troco ' + formatBRL(trocoLinha) : '') + ')')
-                            : 'Pendente'}
-                  </div>
+              {/* Linha 2: status (pode ser longo/quebrar) à esquerda, valor+ações
+                  SEMPRE juntos à direita — evita os botões "flutuarem" sozinhos
+                  numa linha separada quando o texto do status é grande (pagamento
+                  dividido + troco). */}
+              <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
+                <div className={"text-sm font-medium min-w-0 "+(item.pago?'text-emerald-600 dark:text-emerald-400':'text-amber-600 dark:text-amber-400')}>
+                  {item.pago
+                          ? ('Pago (' + (item.pagamentos||[]).map(p => metodoLabel(p.metodo) + ' ' + formatBRL(p.valor)).join(' + ')
+                                  + (trocoLinha > 0 ? ' · troco ' + formatBRL(trocoLinha) : '') + ')')
+                          : 'Pendente'}
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-auto">
                   <div className="text-lg font-semibold">{formatBRL(item.valor)}</div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button onClick={()=> editing ? setEditing(false) : abrirEditor()} title="Editar veículo / pagamento"
-                          className={'p-2.5 sm:p-2 rounded-xl transition '+(editing ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800')}>
-                    <Icon name={item.pago ? 'pencil' : 'badge-check'} className="w-5 h-5" />
-                  </button>
-                  <button onClick={()=>onDelete(item.id)} title="Remover" className="p-2.5 sm:p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"><Icon name="trash-2" className="w-5 h-5" /></button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={()=> editing ? setEditing(false) : abrirEditor()} title="Editar veículo / pagamento"
+                            className={'p-2.5 sm:p-2 rounded-xl transition '+(editing ? 'bg-blue-600 text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800')}>
+                      <Icon name={item.pago ? 'pencil' : 'badge-check'} className="w-5 h-5" />
+                    </button>
+                    <button onClick={()=>onDelete(item.id)} title="Remover" className="p-2.5 sm:p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"><Icon name="trash-2" className="w-5 h-5" /></button>
+                  </div>
                 </div>
               </div>
 
               {editing && (
-                      <div className="mt-3 grid gap-3 border-t border-slate-200 dark:border-slate-800 pt-3 animate-fadeIn">
-                        <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-3 animate-fadeIn">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                           <div>
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Placa</label>
+                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Placa</label>
                             <input value={tempPlaca} onChange={e=>setTempPlaca(e.target.value)}
-                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
                           </div>
                           <div>
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
+                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Tipo</label>
                             <select value={tempTipo} onChange={e=>setTempTipo(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20">
+                                    className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20">
                               <option value="carro">Carro</option>
                               <option value="moto">Moto</option>
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs text-slate-500 dark:text-slate-400">Valor (R$)</label>
+                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor (R$)</label>
                             <input type="number" step="0.01" min="0" value={tempValor}
                                    onChange={e=>setTempValor(e.target.value.replace(',','.'))}
-                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
                           </div>
                         </div>
 
                         <label className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={tempPago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600"/>
+                          <input type="checkbox" checked={tempPago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-blue-600"/>
                           Pagamento confirmado
                         </label>
 
@@ -568,7 +599,7 @@
                         )}
 
                         <div className="flex items-center justify-end gap-2 flex-wrap">
-                          <button type="button" onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">Cancelar</button>
+                          <button type="button" onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">Cancelar</button>
                           <button type="button" onClick={salvar} disabled={saving} className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:brightness-110 disabled:opacity-50">
                             {saving ? 'Salvando...' : 'Salvar'}
                           </button>
@@ -589,11 +620,11 @@
     );
 
     return (
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {filtered.length === 0 && (
-                      <div className="p-6 text-center rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 animate-fadeIn">
-                        <div className="mx-auto w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 mb-2 flex items-center justify-center"><Icon name="search-x" className="w-5 h-5" /></div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Nada por aqui… tente outra placa, ou adicione um veículo.</p>
+                      <div className="p-6 text-center rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 animate-fadeIn">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 mb-2 flex items-center justify-center"><Icon name="search-x" className="w-5 h-5" /></div>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nada por aqui… tente outra placa, ou adicione um veículo.</p>
                       </div>
               )}
               {filtered.map(item => (
@@ -603,13 +634,250 @@
     )
   }
 
+  // ---- Blacklist: veículos que saíram sem pagar, com foto opcional ----
+
+  function BlacklistForm({onAdd}){
+    const [placa, setPlaca] = useState('');
+    const [motivo, setMotivo] = useState('');
+    const [foto, setFoto] = useState(null);
+    const [erroFoto, setErroFoto] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    async function handleFoto(e){
+      const file = e.target.files?.[0];
+      if(!file) return;
+      setErroFoto('');
+      try{
+        setFoto(await resizeImageFile(file));
+      }catch(err){
+        setErroFoto(err.message || 'Falha ao processar a foto');
+      }
+    }
+
+    async function handleSubmit(e){
+      e.preventDefault();
+      if(!placa.trim() || saving) return;
+      setSaving(true);
+      try{
+        await onAdd({
+          id: uuid(),
+          placa: placa.trim().toUpperCase(),
+          motivo: motivo.trim(),
+          foto,
+          criadoEm: Date.now(),
+        });
+        setPlaca(''); setMotivo(''); setFoto(null); setErroFoto('');
+        e.target.reset();
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    return (
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 min-w-0 p-3 sm:p-4 rounded-2xl border border-red-200 dark:border-red-900/40 bg-white/70 dark:bg-zinc-900/40 animate-fadeIn">
+              <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 md:grid-cols-12 md:items-end">
+                <div className="md:col-span-3">
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Placa</label>
+                  <input value={placa} onChange={e=>setPlaca(e.target.value)} placeholder="ABC-1234"
+                         className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-red-500/20"/>
+                </div>
+                <div className="md:col-span-5">
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Motivo (opcional)</label>
+                  <input value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Saiu sem pagar R$ 25..."
+                         className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-red-500/20"/>
+                </div>
+                <div className="md:col-span-3 min-w-0">
+                  <label className="text-xs text-zinc-500 dark:text-zinc-400">Foto (opcional)</label>
+                  {/* input de arquivo escondido + label estilizado: o input
+                      nativo tem largura mínima grande ("Escolher arquivo /
+                      Nenhum arquivo selecionado") e estourava a tela no
+                      celular. Mesmo padrão já usado no Importar das Configs. */}
+                  <label className="mt-1 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 cursor-pointer text-sm truncate">
+                    <Icon name="camera" className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{foto ? 'Trocar foto' : 'Escolher foto'}</span>
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto}/>
+                  </label>
+                </div>
+                <div className="md:col-span-1 flex justify-end">
+                  <button disabled={saving} className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white hover:brightness-110 active:scale-95 transition disabled:opacity-50">
+                    <Icon name="ban" className="w-4 h-4" />
+                    {saving ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </div>
+              {erroFoto && <div className="text-xs text-red-600">{erroFoto}</div>}
+              {foto && (
+                      <div className="flex items-center gap-2">
+                        <img src={foto} alt="Prévia da foto" className="w-16 h-16 rounded-xl object-cover border border-zinc-200 dark:border-zinc-800"/>
+                        <button type="button" onClick={()=>setFoto(null)} className="text-xs text-red-600 hover:underline">Remover foto</button>
+                      </div>
+              )}
+            </form>
+    )
+  }
+
+  function BlacklistRow({item, onDelete}){
+    return (
+            <div className="p-3 rounded-2xl border border-red-200/60 dark:border-red-900/40 bg-white/70 dark:bg-zinc-900/40 hover:shadow-sm transition animate-fadeIn flex items-center gap-3">
+              {item.foto ? (
+                      <img src={item.foto} alt={'Foto de ' + item.placa} className="w-14 h-14 rounded-xl object-cover shrink-0 border border-zinc-200 dark:border-zinc-800"/>
+              ) : (
+                      <span className="w-14 h-14 shrink-0 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center">
+                        <Icon name="camera-off" className="w-5 h-5" />
+                      </span>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold tracking-wide">{item.placa}</div>
+                {item.motivo && <div className="text-sm text-zinc-600 dark:text-zinc-300 truncate">{item.motivo}</div>}
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(item.criadoEm).toLocaleString('pt-BR')}</div>
+              </div>
+              <button onClick={()=>onDelete(item.id)} title="Remover da blacklist"
+                      className="shrink-0 p-2.5 sm:p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"><Icon name="trash-2" className="w-5 h-5" /></button>
+            </div>
+    )
+  }
+
+  function BlacklistList({blacklist, onDelete}){
+    return (
+            <div className="grid grid-cols-1 gap-3">
+              {blacklist.length === 0 && (
+                      <div className="p-6 text-center rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 animate-fadeIn">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 mb-2 flex items-center justify-center"><Icon name="shield-check" className="w-5 h-5" /></div>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhum veículo na blacklist.</p>
+                      </div>
+              )}
+              {blacklist.map(item => (
+                      <BlacklistRow key={item.id} item={item} onDelete={onDelete} />
+              ))}
+            </div>
+    )
+  }
+
+  // ---- Navegação (uma aba = uma tela) ----
+
+  function Header({navId, irPara, theme, setTheme}){
+    return (
+            <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-zinc-900/60 border-b border-zinc-200/60 dark:border-zinc-800">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+                <button onClick={()=>irPara('inicio')} className="flex items-center gap-2 font-extrabold tracking-tight text-lg sm:text-xl hover:opacity-80 transition shrink-0">
+                  <span className="inline-flex w-8 h-8 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-glow animate-pop">
+                    <Icon name="parking-square" className="w-5 h-5" />
+                  </span>
+                  Estaciona+
+                </button>
+
+                <nav className="ml-auto hidden md:flex items-center gap-1 text-sm">
+                  {ABAS.map(a => (
+                          <button key={a.id} onClick={()=>irPara(a.id)}
+                                  className={'px-3 py-1.5 rounded-xl transition '+(navId===a.id
+                                          ? 'bg-blue-600 text-white'
+                                          : 'hover:bg-zinc-100 dark:hover:bg-zinc-800')}>
+                            {a.label}
+                          </button>
+                  ))}
+                </nav>
+
+                <button onClick={()=>setTheme(theme==='dark'?'light':'dark')} title="Alternar tema"
+                        className="ml-auto md:ml-2 shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-sm">
+                  <Icon name={theme==='dark' ? 'moon' : 'sun'} className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tema</span>
+                </button>
+              </div>
+            </header>
+    )
+  }
+
+  function BottomNav({navId, irPara}){
+    return (
+            <footer className="sticky bottom-0 z-40 md:hidden backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-zinc-900/80 border-t border-zinc-200/60 dark:border-zinc-800">
+              <div className="max-w-6xl mx-auto px-1 py-1 flex items-stretch">
+                {ABAS.map(a => (
+                        <button key={a.id} onClick={()=>irPara(a.id)}
+                                className={'flex-1 min-w-0 flex flex-col items-center gap-0.5 px-0.5 py-2 rounded-xl active:scale-95 transition '+(navId===a.id
+                                        ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                                        : 'text-zinc-500 dark:text-zinc-400')}>
+                          <Icon name={a.icon} className="w-5 h-5" />
+                          <span className="text-[10px] leading-tight truncate w-full text-center">{a.label}</span>
+                        </button>
+                ))}
+              </div>
+            </footer>
+    )
+  }
+
+  function ConfigPainel({theme, setTheme, items, loadItems, clearAll}){
+    return (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="font-semibold">Tema</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">Claro ou escuro</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={()=>setTheme('light')} className={'px-3 py-1.5 rounded-xl border '+(theme==='light'?'bg-blue-600 text-white border-blue-600 shadow-glow':'border-zinc-200 dark:border-zinc-800')}>Claro</button>
+                    <button onClick={()=>setTheme('dark')} className={'px-3 py-1.5 rounded-xl border '+(theme==='dark'?'bg-blue-600 text-white border-blue-600 shadow-glow':'border-zinc-200 dark:border-zinc-800')}>Escuro</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="font-semibold">Dados</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">Backup (exporta o que está carregado) e restauração via API</div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={()=>{
+                      const blob = new Blob([JSON.stringify(items, null, 2)], {type:'application/json'});
+                      const url = URL.createObjectURL(blob);
+                      const a = Object.assign(document.createElement('a'), { href:url, download:'backup_estaciona_plus.json' });
+                      a.click(); URL.revokeObjectURL(url);
+                    }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:brightness-110">Exportar</button>
+                    <label className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 cursor-pointer">
+                      Importar
+                      <input type="file" accept="application/json" className="hidden" onChange={e=>{
+                        const file = e.target.files?.[0];
+                        if(!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async () => {
+                          try{
+                            const raw = JSON.parse(reader.result);
+                            const data = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
+                            if(!data){ alert('Arquivo inválido'); return; }
+                            const itensMigrados = data.map(migrateItem);
+                            for(const item of itensMigrados){
+                              await fetch(API_BASE + '/Add', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item)
+                              });
+                            }
+                            await loadItems();
+                          }
+                          catch{ alert('Falha ao importar'); }
+                        };
+                        reader.readAsText(file);
+                      }}/>
+                    </label>
+                    <button onClick={clearAll} className="px-3 py-1.5 rounded-xl bg-red-600 text-white hover:brightness-110">Limpar tudo</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+    )
+  }
+
   function Section({id, title, subtitle, children, action}){
     return (
-            <section id={id} className="scroll-mt-24 py-6">
+            // min-w-0: como itens de grid não encolhem por padrão, sem isso
+            // qualquer conteúdo largo aqui dentro alargaria a página inteira.
+            <section id={id} className="scroll-mt-24 min-w-0 py-6">
               <div className="flex items-end justify-between mb-3 gap-2 flex-wrap">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{title}</h2>
-                  {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+                  {subtitle && <p className="text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>}
                 </div>
                 {action}
               </div>
@@ -618,16 +886,20 @@
     )
   }
 
+  // localStorage pode lançar (aba anônima, WebView, política corporativa) —
+  // sem isso o React desmontava o app inteiro (tela em branco, sem aviso).
   function useTheme(){
     const [theme, setTheme] = useState(() => {
-      const saved = localStorage.getItem('theme');
-      if(saved) return saved;
+      try {
+        const saved = localStorage.getItem('theme');
+        if(saved) return saved;
+      } catch {}
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     });
     useEffect(()=>{
       const root = document.documentElement;
       if(theme==='dark') root.classList.add('dark'); else root.classList.remove('dark');
-      localStorage.setItem('theme', theme);
+      try { localStorage.setItem('theme', theme); } catch {}
     }, [theme]);
     return [theme, setTheme];
   }
@@ -635,6 +907,7 @@
   function App(){
     const [theme, setTheme] = useTheme();
     const [items, setItems] = useState([]);
+    const [blacklist, setBlacklist] = useState([]);
     // `loading` só é usado na primeira carga (tela cheia de "Carregando...").
     // `refreshing` é usado nas atualizações em segundo plano (disparadas por
     // outro dispositivo via SSE) e NUNCA desmonta a tela — assim o que o
@@ -646,6 +919,33 @@
     const [search, setSearch] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('todos');
 
+    // `navId` = item do menu clicado (para destacar). A TELA é derivada dele:
+    // só Relatórios e Blacklist têm tela própria; o resto fica na inicial.
+    const [navId, setNavId] = useState(navDoHash);
+    const aba = TELAS_PROPRIAS.includes(navId) ? navId : 'inicio';
+
+    function irPara(id){
+      setNavId(id);
+      try { history.replaceState(null, '', '#' + id); } catch {}
+      if(TELAS_PROPRIAS.includes(id)){
+        window.scrollTo(0, 0);
+        return;
+      }
+      // Volta pra inicial e rola até a seção. O setTimeout deixa o React
+      // renderizar a tela inicial antes de procurar o elemento.
+      setTimeout(() => {
+        const alvo = document.getElementById(id);
+        if(alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else window.scrollTo(0, 0);
+      }, 0);
+    }
+
+    useEffect(()=>{
+      const onHash = () => setNavId(navDoHash());
+      window.addEventListener('hashchange', onHash);
+      return () => window.removeEventListener('hashchange', onHash);
+    }, []);
+
     // Cada mutação local deixa um "carimbo" aqui. O evento SSE que o próprio
     // servidor devolve por causa dessa mutação é consumido (não dispara um
     // reload da lista inteira) — a tela já foi atualizada com a resposta do
@@ -655,7 +955,7 @@
       ecosLocais.current.push(Date.now());
     }
 
-    useEffect(()=>{ loadItems(); }, []);
+    useEffect(()=>{ loadItems(); loadBlacklist(); }, []);
 
     // Atualização em tempo real via Server-Sent Events. O EventSource reconecta
     // sozinho se a conexão cair (comportamento padrão do browser).
@@ -676,6 +976,7 @@
             return;
           }
           loadItems({ silent: true });
+          loadBlacklist();
         }, 350);
       };
 
@@ -689,7 +990,7 @@
 
     useEffect(()=>{
       setTimeout(()=>window?.lucide?.createIcons?.(), 0);
-    }, [items, tab, search, theme, loading]);
+    }, [items, blacklist, tab, search, theme, loading, aba]);
 
     // `silent = true` é usado nas atualizações vindas de outro dispositivo:
     // busca os dados novos e atualiza a lista SEM trocar a tela toda por um
@@ -709,12 +1010,32 @@
       }
     }
 
+    // Devolve true só quando o veículo realmente entrou — o formulário só
+    // limpa os campos nesse caso (antes limpava até quando dava erro).
     async function addItem(novo){
       const placaNova = (novo.placa || '').trim().toUpperCase();
       if(items.some(i => ((i.placa||'').trim().toUpperCase() === placaNova))){
         alert('A placa ' + placaNova + ' já está cadastrada.');
-        return;
+        return false;
       }
+
+      // A blacklist NÃO bloqueia a entrada: o veículo pode voltar a usar o
+      // estacionamento. Só avisa o operador do que aconteceu antes, com data,
+      // e pede confirmação.
+      const ocorrencias = blacklist.filter(b => (b.placa||'').trim().toUpperCase() === placaNova);
+      if(ocorrencias.length > 0){
+        const historico = ocorrencias
+                .map(b => '• ' + new Date(b.criadoEm).toLocaleString('pt-BR')
+                        + (b.motivo ? ' — ' + b.motivo : ' — (sem motivo registrado)'))
+                .join('\n');
+        const confirmado = confirm(
+                'ATENÇÃO: a placa ' + placaNova + ' está na BLACKLIST.\n\n'
+                + historico
+                + '\n\nDeseja cadastrar este veículo mesmo assim?'
+        );
+        if(!confirmado) return false;
+      }
+
       try {
         const res = await fetch(API_BASE + '/Add', {
           method: 'POST',
@@ -725,8 +1046,10 @@
         const saved = await res.json();
         marcarAcaoLocal();
         setItems(prev => [migrateItem(saved), ...prev]);
+        return true;
       } catch (err) {
         alert(err.message || 'Erro ao adicionar');
+        return false;
       }
     }
 
@@ -790,6 +1113,45 @@
       }
     }
 
+    async function loadBlacklist(){
+      try {
+        const res = await fetch('/Blacklist');
+        if (!res.ok) throw new Error(await parseErro(res, 'Falha ao carregar blacklist'));
+        setBlacklist(await res.json());
+      } catch (err) {
+        console.error('Falha ao carregar blacklist:', err);
+      }
+    }
+
+    async function addBlacklistEntry(novo){
+      try {
+        const res = await fetch('/Blacklist/Add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novo)
+        });
+        if (!res.ok) throw new Error(await parseErro(res, 'Erro ao adicionar à blacklist'));
+        const saved = await res.json();
+        marcarAcaoLocal();
+        setBlacklist(prev => [saved, ...prev]);
+      } catch (err) {
+        alert(err.message || 'Erro ao adicionar à blacklist');
+      }
+    }
+
+    async function removeBlacklistEntry(id){
+      const anterior = blacklist;
+      marcarAcaoLocal();
+      setBlacklist(prev => prev.filter(i => i.id !== id));
+      try {
+        const res = await fetch('/Blacklist/' + id, { method: 'DELETE' });
+        if (!res.ok && res.status !== 204) throw new Error(await parseErro(res, 'Erro ao remover'));
+      } catch (err) {
+        setBlacklist(anterior);
+        alert(err.message || 'Erro ao remover');
+      }
+    }
+
     const carros = useMemo(()=> items.filter(i=>i.tipo==='carro'), [items]);
     const motos = useMemo(()=> items.filter(i=>i.tipo==='moto'), [items]);
 
@@ -799,14 +1161,6 @@
               .flatMap(i => i.pagamentos || [])
               .filter(p => p.metodo === metodo)
               .reduce((s,p) => s + (Number(p.valor)||0), 0);
-    }
-
-    function countPagamentos(lista, metodo){
-      return lista
-              .filter(i => i.pago)
-              .flatMap(i => i.pagamentos || [])
-              .filter(p => p.metodo === metodo)
-              .length;
     }
 
     // Troco devolvido no período (só dinheiro tem troco). Informativo para o
@@ -835,67 +1189,77 @@
     const trocoMotos = useMemo(()=> totalTrocoLista(motos), [motos]);
     const pendMotos = useMemo(()=> motos.filter(i=>!i.pago).reduce((s,i)=>s+i.valor,0), [motos]);
 
-    if (loading) {
-      return (
-              <div className="flex items-center justify-center py-24 gap-2 text-slate-500 dark:text-slate-400">
-                <Icon name="loader-circle" className="w-5 h-5 animate-spin" />
-                Carregando...
-              </div>
-      );
-    }
+    // Totais combinados (carro+moto) para o Resumo — com tantas formas de
+    // pagamento e status, 8-10 cards separados por tipo ficava poluído. O
+    // Resumo agora mostra só os números-chave; o detalhe por tipo continua
+    // inteiro em Relatórios.
+    const totalArrecadado = totalCarrosPago + totalMotosPago;
+    const totalPendente = pendCarros + pendMotos;
+    const totalDinheiro = totalCarrosDinheiro + totalMotosDinheiro;
+    const totalPix = totalCarrosPix + totalMotosPix;
+    const trocoTotal = trocoCarros + trocoMotos;
 
     return (
-            <div className="grid gap-8">
+            <div className="min-h-screen flex flex-col">
+              <Header navId={navId} irPara={irPara} theme={theme} setTheme={setTheme} />
+
+              {/* pb-24 no mobile: espaço para o menu fixo de baixo não cobrir
+                  o último item quando a tela é curta. */}
+              <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-8">
               {refreshing && (
-                      <div className="fixed top-16 right-3 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 text-xs shadow-lg animate-fadeIn">
+                      <div className="fixed top-16 right-3 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/90 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-xs shadow-lg animate-fadeIn">
                         <Icon name="loader-circle" className="w-3.5 h-3.5 animate-spin" />
                         Sincronizando...
                       </div>
               )}
+
+              {loading && (
+                      <div className="flex items-center justify-center py-24 gap-2 text-zinc-500 dark:text-zinc-400">
+                        <Icon name="loader-circle" className="w-5 h-5 animate-spin" />
+                        Carregando...
+                      </div>
+              )}
+
+              {!loading && aba === 'inicio' && (
+              <div className="grid grid-cols-1 gap-8">
               <Section id="inicio" title="Resumo" subtitle="Visão geral rápida do caixa e movimentação">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <StatCard icon="car" label="Total Carros" value={formatBRL(totalCarros)} sub={`${carros.length} no pátio · ${formatBRL(totalCarrosPago)} pago`} />
-                  <StatCard icon="motorbike" label="Total Motos" value={formatBRL(totalMotos)} sub={`${motos.length} no pátio · ${formatBRL(totalMotosPago)} pago`} />
-                  <StatCard icon="alarm-clock" label="Pend. Carros" value={formatBRL(pendCarros)} sub={`${carros.filter(i=>!i.pago).length} itens`} />
-                  <StatCard icon="alarm-clock" label="Pend. Motos" value={formatBRL(pendMotos)} sub={`${motos.filter(i=>!i.pago).length} itens`} />
+                  <StatCard icon="car" label="Carros" value={formatBRL(totalCarros)} sub={`${carros.length} no pátio · ${formatBRL(totalCarrosPago)} pago`} />
+                  <StatCard icon="motorbike" label="Motos" value={formatBRL(totalMotos)} sub={`${motos.length} no pátio · ${formatBRL(totalMotosPago)} pago`} />
+                  <StatCard icon="badge-check" label="Arrecadado" value={formatBRL(totalArrecadado)} sub="Carros + motos pagos" />
+                  <StatCard icon="alarm-clock" label="Pendente" value={formatBRL(totalPendente)} sub={`Carro ${formatBRL(pendCarros)} · Moto ${formatBRL(pendMotos)}`} />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-3">
-                  <StatCard icon="wallet" label="Carro: Dinheiro" value={formatBRL(totalCarrosDinheiro)} sub={`${countPagamentos(carros, 'dinheiro')} pagamentos${trocoCarros>0 ? ' · troco '+formatBRL(trocoCarros) : ''}`} />
-                  <StatCard icon="credit-card" label="Carro: Pix" value={formatBRL(totalCarrosPix)} sub={`${countPagamentos(carros, 'pix')} pagamentos`} />
-                  <StatCard icon="wallet" label="Moto: Dinheiro" value={formatBRL(totalMotosDinheiro)} sub={`${countPagamentos(motos, 'dinheiro')} pagamentos${trocoMotos>0 ? ' · troco '+formatBRL(trocoMotos) : ''}`} />
-                  <StatCard icon="credit-card" label="Moto: Pix" value={formatBRL(totalMotosPix)} sub={`${countPagamentos(motos, 'pix')} pagamentos`} />
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-3">
+                  <StatCard icon="wallet" label="Dinheiro" value={formatBRL(totalDinheiro)} sub={`Carro ${formatBRL(totalCarrosDinheiro)} · Moto ${formatBRL(totalMotosDinheiro)}${trocoTotal>0 ? ' · troco '+formatBRL(trocoTotal) : ''}`} />
+                  <StatCard icon="credit-card" label="Pix" value={formatBRL(totalPix)} sub={`Carro ${formatBRL(totalCarrosPix)} · Moto ${formatBRL(totalMotosPix)}`} />
                 </div>
 
                 {(totalCarrosSemMetodo > 0 || totalMotosSemMetodo > 0) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-3">
-                          {totalCarrosSemMetodo > 0 && (
-                                  <StatCard icon="circle-help" label="Carro: método não informado" value={formatBRL(totalCarrosSemMetodo)} sub="Reabra o veículo e escolha dinheiro/pix" />
-                          )}
-                          {totalMotosSemMetodo > 0 && (
-                                  <StatCard icon="circle-help" label="Moto: método não informado" value={formatBRL(totalMotosSemMetodo)} sub="Reabra o veículo e escolha dinheiro/pix" />
-                          )}
+                        <div className="mt-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                          <Icon name="circle-help" className="w-3.5 h-3.5 shrink-0" />
+                          Há veículos pagos sem método informado — detalhe em Relatórios.
                         </div>
                 )}
               </Section>
 
               <Section id="placas" title="Placas" subtitle="Gerencie entradas, pagamentos e valores" action={
-                <a href="#relatorios" className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <button onClick={()=>irPara('relatorios')} className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <Icon name="pie-chart" className="w-4 h-4" />
                   Ir para Relatórios
-                </a>
+                </button>
               }>
-                <div className="grid gap-4">
+                <div className="grid grid-cols-1 gap-4 min-w-0">
                   <AddForm onAdd={addItem} />
 
-                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center min-w-0">
                     <Tabs tab={tab} setTab={setTab} />
                     <PaymentFilter paymentFilter={paymentFilter} setPaymentFilter={setPaymentFilter} />
-                    <div className="flex-1"></div>
-                    <div className="relative">
-                      <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="hidden sm:block flex-1"></div>
+                    <div className="relative min-w-0">
+                      <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                       <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar placa..."
-                             className="w-full sm:w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                             className="w-full min-w-0 sm:w-64 pl-9 pr-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
                     </div>
                   </div>
 
@@ -904,12 +1268,21 @@
                   />
                 </div>
               </Section>
+              </div>
+              )}
 
+              {!loading && aba === 'config' && (
+              <Section id="config" title="Configurações" subtitle="Tema, backup e mais">
+                <ConfigPainel theme={theme} setTheme={setTheme} items={items} loadItems={loadItems} clearAll={clearAll} />
+              </Section>
+              )}
+
+              {!loading && aba === 'relatorios' && (
               <Section id="relatorios" title="Relatórios" subtitle="Totais por tipo, status e método de pagamento">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40">
                     <h3 className="font-semibold mb-2 flex items-center gap-2"><Icon name="car" className="w-5 h-5" />Carros</h3>
-                    <ul className="text-sm grid gap-1">
+                    <ul className="text-sm grid grid-cols-1 gap-1">
                       <li className="flex justify-between"><span>Total no pátio (pago + pendente)</span><span className="font-semibold">{formatBRL(totalCarros)}</span></li>
                       <li className="flex justify-between"><span>Arrecadado (pagos)</span><span className="font-semibold">{formatBRL(totalCarrosPago)}</span></li>
                       <li className="flex justify-between"><span className="ml-4">→ Dinheiro</span><span className="font-semibold">{formatBRL(totalCarrosDinheiro)}</span></li>
@@ -924,9 +1297,9 @@
                       <li className="flex justify-between"><span>Itens</span><span className="font-semibold">{carros.length}</span></li>
                     </ul>
                   </div>
-                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40">
+                  <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40">
                     <h3 className="font-semibold mb-2 flex items-center gap-2"><Icon name="motorbike" className="w-5 h-5" />Motos</h3>
-                    <ul className="text-sm grid gap-1">
+                    <ul className="text-sm grid grid-cols-1 gap-1">
                       <li className="flex justify-between"><span>Total no pátio (pago + pendente)</span><span className="font-semibold">{formatBRL(totalMotos)}</span></li>
                       <li className="flex justify-between"><span>Arrecadado (pagos)</span><span className="font-semibold">{formatBRL(totalMotosPago)}</span></li>
                       <li className="flex justify-between"><span className="ml-4">→ Dinheiro</span><span className="font-semibold">{formatBRL(totalMotosDinheiro)}</span></li>
@@ -943,86 +1316,26 @@
                   </div>
                 </div>
               </Section>
+              )}
 
-              <Section id="config" title="Configurações" subtitle="Tema, backup e mais">
-                <div className="grid gap-4">
-                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div>
-                        <div className="font-semibold">Tema</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Claro ou escuro</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={()=>setTheme('light')} className={'px-3 py-1.5 rounded-xl border '+(theme==='light'?'bg-blue-600 text-white border-blue-600 shadow-glow':'border-slate-200 dark:border-slate-800')}>Claro</button>
-                        <button onClick={()=>setTheme('dark')} className={'px-3 py-1.5 rounded-xl border '+(theme==='dark'?'bg-blue-600 text-white border-blue-600 shadow-glow':'border-slate-200 dark:border-slate-800')}>Escuro</button>
-                        <button onClick={()=>setTheme(theme==='dark'?'light':'dark')} className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">Alternar</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div>
-                        <div className="font-semibold">Dados</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Backup (exporta o que está carregado) e restauração via API</div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button onClick={()=>{
-                          const blob = new Blob([JSON.stringify(items, null, 2)], {type:'application/json'});
-                          const url = URL.createObjectURL(blob);
-                          const a = Object.assign(document.createElement('a'), { href:url, download:'backup_estaciona_plus.json' });
-                          a.click(); URL.revokeObjectURL(url);
-                        }}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:brightness-110">Exportar</button>
-                        <label className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
-                          Importar
-                          <input type="file" accept="application/json" className="hidden" onChange={e=>{
-                            const file = e.target.files?.[0];
-                            if(!file) return;
-                            const reader = new FileReader();
-                            reader.onload = async () => {
-                              try{
-                                const raw = JSON.parse(reader.result);
-                                const data = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
-                                if(!data){ alert('Arquivo inválido'); return; }
-                                const itensMigrados = data.map(migrateItem);
-                                for(const item of itensMigrados){
-                                  await fetch(API_BASE + '/Add', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(item)
-                                  });
-                                }
-                                await loadItems();
-                              }
-                              catch{ alert('Falha ao importar'); }
-                            };
-                            reader.readAsText(file);
-                          }}/>
-                        </label>
-                        <button onClick={clearAll} className="px-3 py-1.5 rounded-xl bg-red-600 text-white hover:brightness-110">Limpar tudo</button>
-                      </div>
-                    </div>
-                  </div>
+              {!loading && aba === 'blacklist' && (
+              <Section id="blacklist" title="Blacklist" subtitle="Veículos que saíram sem pagar">
+                <div className="grid grid-cols-1 gap-4">
+                  <BlacklistForm onAdd={addBlacklistEntry} />
+                  <BlacklistList blacklist={blacklist} onDelete={removeBlacklistEntry} />
                 </div>
               </Section>
+              )}
+
+              </main>
+
+              <BottomNav navId={navId} irPara={irPara} />
             </div>
     )
   }
 
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<App />);
-
-  const themeBtn = document.getElementById('themeToggle');
-  themeBtn?.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.contains('dark');
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    window?.lucide?.createIcons?.();
-  });
-
-  // Renderiza os ícones do header/footer (que ficam fora do React).
-  window?.lucide?.createIcons?.();
 </script>
 </body>
 </html>

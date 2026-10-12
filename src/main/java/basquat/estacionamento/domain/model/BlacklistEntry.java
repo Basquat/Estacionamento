@@ -1,40 +1,27 @@
-package basquat.estacionamento.User;
-
-import jakarta.persistence.*;
+package basquat.estacionamento.domain.model;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "blacklist")
+/**
+ * Entidade de domínio - Registro de blacklist.
+ * Sem dependências de JPA ou Spring.
+ */
 public class BlacklistEntry {
 
-    @Id
-    @Column(name = "id", nullable = false, unique = true)
     private String id;
-
-    @Column(name = "placa", nullable = false)
     private String placa;
-
-    @Column(name = "motivo", length = 500)
     private String motivo;
-
-    // Data URL (base64) já redimensionada no front antes do envio. Sem
-    // storage de arquivos no projeto — para o volume de uma blacklist isso
-    // basta; se crescer muito, trocar por upload pro Supabase Storage.
-    @Column(name = "foto", columnDefinition = "TEXT")
     private String foto;
-
-    @Column(name = "criado_em", nullable = false)
     private Long criadoEm;
 
-    @PrePersist
-    void preencherPadroes() {
-        if (id == null || id.isBlank()) {
-            id = UUID.randomUUID().toString();
-        }
-        if (criadoEm == null) {
-            criadoEm = System.currentTimeMillis();
-        }
+    public BlacklistEntry() {}
+
+    public BlacklistEntry(String id, String placa, String motivo, String foto, Long criadoEm) {
+        this.id = id;
+        this.placa = placa;
+        this.motivo = motivo;
+        this.foto = foto;
+        this.criadoEm = criadoEm;
     }
 
     public String getId() {

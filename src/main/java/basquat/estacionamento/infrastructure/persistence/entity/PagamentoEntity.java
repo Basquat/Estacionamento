@@ -1,39 +1,31 @@
-package basquat.estacionamento.User;
+package basquat.estacionamento.infrastructure.persistence.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.util.UUID;
 
+/**
+ * Entidade JPA para pagamentos.
+ * Fica em infrastructure - é a representação persistida.
+ */
 @Entity
 @Table(name = "pagamento")
-public class Pagamento {
+public class PagamentoEntity {
 
     @Id
     @Column(name = "id", nullable = false, unique = true)
     private String id;
 
-    // FK para auto_model.id. Continua sendo uma coluna escrita por esta
-    // entidade — a associação em AutoModel é apenas leitura (ver AutoModel).
     @Column(name = "auto_id", nullable = false)
     private String autoId;
 
-    // O front-end usa a chave "metodo"; o banco usa a coluna "metodo_pagamento".
     @Column(name = "metodo_pagamento", nullable = false)
     @JsonProperty("metodo")
     private String metodoPagamento;
 
-    // Parte do valor total do veículo quitada por esta forma de pagamento.
     @Column(name = "valor", nullable = false)
     private double valor;
 
-    // Troco devolvido ao cliente quando ele paga em dinheiro um valor acima
-    // do devido. NÃO entra na soma que precisa bater com o valor do veículo —
-    // é só registro para o caixa não ficar "sobrando" dinheiro no fim do dia.
-    //
-    // Coluna anulável de propósito: assim o `ddl-auto=update` consegue
-    // adicioná-la mesmo numa tabela que já tenha linhas (uma coluna NOT NULL
-    // sem default quebraria a migração). Linhas antigas viram troco = 0.
     @Column(name = "troco")
     private Double troco;
 
@@ -86,7 +78,7 @@ public class Pagamento {
         this.valor = valor;
     }
 
-    public double getTroco() {
+    public Double getTroco() {
         return troco == null ? 0.0 : troco;
     }
 

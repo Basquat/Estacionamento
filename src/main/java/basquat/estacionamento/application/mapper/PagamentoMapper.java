@@ -1,6 +1,6 @@
 package basquat.estacionamento.application.mapper;
 
-import basquat.estacionamento.User.Pagamento;
+import basquat.estacionamento.domain.model.Pagamento;
 import basquat.estacionamento.application.dto.request.PagamentoRequest;
 import basquat.estacionamento.application.dto.response.PagamentoResponse;
 

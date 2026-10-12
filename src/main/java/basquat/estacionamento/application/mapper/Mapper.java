@@ -1,7 +1,7 @@
 package basquat.estacionamento.application.mapper;
 
-import basquat.estacionamento.User.AutoModel;
-import basquat.estacionamento.User.Pagamento;
+import basquat.estacionamento.domain.model.Auto;
+import basquat.estacionamento.domain.model.Pagamento;
 import basquat.estacionamento.application.dto.request.AutoCreateRequest;
 import basquat.estacionamento.application.dto.request.AutoUpdateRequest;
 import basquat.estacionamento.application.dto.request.PagamentoRequest;
@@ -13,10 +13,10 @@ import java.util.UUID;
 
 public class Mapper {
 
-    public static AutoModel toEntity(AutoCreateRequest request) {
+    public static Auto toEntity(AutoCreateRequest request) {
         if (request == null) return null;
 
-        AutoModel model = new AutoModel();
+        Auto model = new Auto();
         model.setId(UUID.randomUUID().toString());
         model.setPlaca(request.getPlaca());
         model.setTipo(request.getTipo());
@@ -37,7 +37,7 @@ public class Mapper {
         return model;
     }
 
-    public static void updateEntity(AutoModel model, AutoUpdateRequest request) {
+    public static void updateEntity(Auto model, AutoUpdateRequest request) {
         if (request == null || model == null) return;
 
         if (request.getPlaca() != null) model.setPlaca(request.getPlaca());
@@ -55,7 +55,7 @@ public class Mapper {
         }
     }
 
-    public static AutoResponse toResponse(AutoModel model) {
+    public static AutoResponse toResponse(Auto model) {
         if (model == null) return null;
 
         List<PagamentoResponse> pagamentosResponse = new ArrayList<>();

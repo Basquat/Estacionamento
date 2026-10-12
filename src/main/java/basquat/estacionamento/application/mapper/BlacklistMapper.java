@@ -1,6 +1,6 @@
 package basquat.estacionamento.application.mapper;
 
-import basquat.estacionamento.User.BlacklistEntry;
+import basquat.estacionamento.domain.model.BlacklistEntry;
 import basquat.estacionamento.application.dto.request.BlacklistCreateRequest;
 import basquat.estacionamento.application.dto.response.BlacklistResponse;
 import java.util.UUID;

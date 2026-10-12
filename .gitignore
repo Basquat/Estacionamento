@@ -37,3 +37,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Pastas locais (não versionar) ###
+db/
+docs/

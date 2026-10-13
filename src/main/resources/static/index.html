@@ -224,6 +224,57 @@
     });
   }
 
+  // Câmera ao vivo (getUserMedia): `<input capture>` é só uma dica e vários
+  // navegadores de celular abrem a galeria mesmo assim. Exige HTTPS/localhost.
+  function CameraModal({onCapture, onClose, maxDim = 900, quality = 0.75}){
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
+    const [erro, setErro] = useState('');
+    const [pronta, setPronta] = useState(false);
+
+    useEffect(()=>{
+      let ativo = true;
+      (async ()=>{
+        try{
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+          if(!ativo){ stream.getTracks().forEach(t=>t.stop()); return; }
+          streamRef.current = stream;
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setPronta(true);
+        }catch(e){
+          if(ativo) setErro('Não foi possível abrir a câmera. Libere a permissão de câmera no navegador.');
+        }
+      })();
+      return ()=>{ ativo = false; streamRef.current?.getTracks().forEach(t=>t.stop()); };
+    }, []);
+
+    function capturar(){
+      const v = videoRef.current;
+      if(!v || !v.videoWidth) return;
+      const escala = Math.min(1, maxDim / Math.max(v.videoWidth, v.videoHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(v.videoWidth * escala);
+      canvas.height = Math.round(v.videoHeight * escala);
+      canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+      onCapture(canvas.toDataURL('image/jpeg', quality));
+    }
+
+    return (
+      <div className="fixed inset-0 z-[70] bg-black flex flex-col">
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          {erro
+            ? <div className="text-white text-sm text-center p-6">{erro}</div>
+            : <video ref={videoRef} playsInline muted className="max-w-full max-h-full"/>}
+        </div>
+        <div className="flex items-center justify-center gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={onClose} className="px-4 py-3 rounded-xl bg-white/15 text-white">Cancelar</button>
+          {!erro && <button type="button" onClick={capturar} disabled={!pronta} className="px-6 py-3 rounded-xl bg-white text-black font-semibold disabled:opacity-50">Tirar foto</button>}
+        </div>
+      </div>
+    )
+  }
+
   // Compatibiliza itens vindos do back-end antigo (campo único
   // `metodoPagamento`) com o novo formato (`pagamentos: [...]`).
   function migrateItem(item){
@@ -555,6 +606,8 @@
     const [tempFoto, setTempFoto] = useState(item.foto || null);
     const [erroFoto, setErroFoto] = useState('');
     const [verFoto, setVerFoto] = useState(false);
+    const [camera, setCamera] = useState(false);
+    const temCamera = !!navigator.mediaDevices?.getUserMedia;
 
     async function handleFoto(e){
       const file = e.target.files?.[0];
@@ -740,10 +793,11 @@
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
-                              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm">
+                              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm"
+                                     onClick={temCamera ? (e=>{ e.preventDefault(); setCamera(true); }) : undefined}>
                                 <Icon name="camera" className="w-4 h-4 shrink-0" />
                                 <span>{tempFoto ? 'Trocar foto' : 'Fotografar'}</span>
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto}/>
+                                {!temCamera && <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto}/>}
                               </label>
                               {tempFoto && (
                                 <>
@@ -772,6 +826,10 @@
                           </div>
                         </div>
                       </div>
+              )}
+
+              {camera && (
+                <CameraModal onClose={()=>setCamera(false)} onCapture={d=>{ setTempFoto(d); setCamera(false); }}/>
               )}
 
               {verFoto && item.foto && (

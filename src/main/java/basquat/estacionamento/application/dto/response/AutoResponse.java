@@ -8,6 +8,7 @@ public class AutoResponse {
     private String placa;
     private String tipo;
     private Double valor;
+    private Double valorPrevisto;
     private Boolean pago;
     private Long entrada;
     private List<PagamentoResponse> pagamentos;
@@ -78,5 +79,13 @@ public class AutoResponse {
 
     public void setPagamentos(List<PagamentoResponse> pagamentos) {
         this.pagamentos = pagamentos;
+    }
+
+    public Double getValorPrevisto() {
+        return valorPrevisto;
+    }
+
+    public void setValorPrevisto(Double valorPrevisto) {
+        this.valorPrevisto = valorPrevisto;
     }
 }

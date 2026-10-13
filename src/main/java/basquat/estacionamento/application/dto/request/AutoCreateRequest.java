@@ -16,6 +16,7 @@ public class AutoCreateRequest {
     @NotNull(message = "O valor é obrigatório")
     @Positive(message = "O valor deve ser positivo")
     private Double valor;
+    private Double valorPrevisto;
 
     private List<PagamentoRequest> pagamentos;
 
@@ -58,5 +59,13 @@ public class AutoCreateRequest {
 
     public void setPagamentos(List<PagamentoRequest> pagamentos) {
         this.pagamentos = pagamentos;
+    }
+
+    public Double getValorPrevisto() {
+        return valorPrevisto;
+    }
+
+    public void setValorPrevisto(Double valorPrevisto) {
+        this.valorPrevisto = valorPrevisto;
     }
 }

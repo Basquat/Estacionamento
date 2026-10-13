@@ -1,5 +1,6 @@
 package basquat.estacionamento.application.mapper;
 
+import basquat.estacionamento.application.dto.request.AutoCreateRequest;
 import basquat.estacionamento.application.dto.request.AutoUpdateRequest;
 import basquat.estacionamento.application.dto.request.PagamentoRequest;
 import basquat.estacionamento.domain.model.Auto;
@@ -29,5 +30,26 @@ class MapperTest {
         assertEquals(111L, auto.getPagamentos().get(0).getData());
         assertNotEquals("de-outro-veiculo", auto.getPagamentos().get(1).getId());
         assertNull(auto.getPagamentos().get(1).getData());
+    }
+
+    @Test
+    void criarComPagamentosNasceComoPagoEGuardaValorPrevisto() {
+        AutoCreateRequest req = new AutoCreateRequest("ABC1234", "carro", 20.0,
+                List.of(new PagamentoRequest("pix", 20.0, 0.0, 0.0)));
+        req.setValorPrevisto(25.0);
+
+        Auto auto = Mapper.toEntity(req);
+
+        assertTrue(auto.getPago());
+        assertEquals(25.0, auto.getValorPrevisto());
+        assertEquals(20.0, auto.getValor());
+    }
+
+    @Test
+    void criarSemPagamentosNasceComoPendente() {
+        Auto auto = Mapper.toEntity(new AutoCreateRequest("ABC1234", "carro", 20.0, null));
+
+        assertFalse(auto.getPago());
+        assertNull(auto.getValorPrevisto());
     }
 }

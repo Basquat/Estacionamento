@@ -7,6 +7,7 @@ public class AutoUpdateRequest {
     private String placa;
     private String tipo;
     private Double valor;
+    private Double valorPrevisto;
     private Boolean pago;
     private List<PagamentoRequest> pagamentos;
 
@@ -58,5 +59,13 @@ public class AutoUpdateRequest {
 
     public void setPagamentos(List<PagamentoRequest> pagamentos) {
         this.pagamentos = pagamentos;
+    }
+
+    public Double getValorPrevisto() {
+        return valorPrevisto;
+    }
+
+    public void setValorPrevisto(Double valorPrevisto) {
+        this.valorPrevisto = valorPrevisto;
     }
 }

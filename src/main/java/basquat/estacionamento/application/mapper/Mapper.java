@@ -23,7 +23,7 @@ public class Mapper {
         model.setPlaca(request.getPlaca());
         model.setTipo(request.getTipo());
         model.setValor(request.getValor());
-        model.setPago(false);
+        model.setValorPrevisto(request.getValorPrevisto());
         model.setEntrada(System.currentTimeMillis());
 
         if (request.getPagamentos() != null) {
@@ -35,6 +35,7 @@ public class Mapper {
             }
             model.setPagamentos(pagamentos);
         }
+        model.setPago(model.getPagamentos() != null && !model.getPagamentos().isEmpty());
 
         return model;
     }
@@ -46,6 +47,7 @@ public class Mapper {
         if (request.getTipo() != null) model.setTipo(request.getTipo());
         if (request.getValor() != null) model.setValor(request.getValor());
         if (request.getPago() != null) model.setPago(request.getPago());
+        if (request.getValorPrevisto() != null) model.setValorPrevisto(request.getValorPrevisto());
 
         if (request.getPagamentos() != null) {
             // Só reaproveita id/data de pagamentos que já pertencem a ESTE veículo;
@@ -79,7 +81,7 @@ public class Mapper {
             }
         }
 
-        return new AutoResponse(
+        AutoResponse response = new AutoResponse(
             model.getId(),
             model.getPlaca(),
             model.getTipo(),
@@ -88,6 +90,8 @@ public class Mapper {
             model.getEntrada(),
             pagamentosResponse
         );
+        response.setValorPrevisto(model.getValorPrevisto());
+        return response;
     }
 
     public static Pagamento toPagamentoEntity(PagamentoRequest request) {

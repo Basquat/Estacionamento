@@ -71,7 +71,7 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
                 pagamentos.add(toPagamentoDomain(pe));
             }
         }
-        return new Auto(
+        Auto auto = new Auto(
                 e.getId(),
                 e.getPlaca(),
                 e.getTipo(),
@@ -80,6 +80,8 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
                 e.getEntrada(),
                 pagamentos
         );
+        auto.setValorPrevisto(e.getValorPrevisto());
+        return auto;
     }
 
     private Pagamento toPagamentoDomain(PagamentoEntity pe) {
@@ -101,6 +103,7 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
         e.setPlaca(a.getPlaca());
         e.setTipo(a.getTipo());
         e.setValor(a.getValor());
+        e.setValorPrevisto(a.getValorPrevisto());
         e.setPago(a.getPago());
         e.setEntrada(a.getEntrada());
 

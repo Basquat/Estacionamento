@@ -21,12 +21,14 @@
           keyframes: {
             fadeIn: { '0%': { opacity: 0, transform:'translateY(8px)' }, '100%': { opacity: 1, transform:'translateY(0)'} },
             pop: { '0%': { transform:'scale(0.95)', opacity:0 }, '100%': { transform:'scale(1)', opacity:1 }},
-            blink: { '0%,100%':{opacity:.4}, '50%':{opacity:1} }
+            blink: { '0%,100%':{opacity:.4}, '50%':{opacity:1} },
+            slideUp: { '0%': { transform:'translateY(100%)' }, '100%': { transform:'translateY(0)' } }
           },
           animation: {
             fadeIn: 'fadeIn .35s ease-out',
             pop: 'pop .2s ease-out',
-            blink: 'blink 1.2s ease-in-out infinite'
+            blink: 'blink 1.2s ease-in-out infinite',
+            slideUp: 'slideUp .25s ease-out'
           }
         }
       }
@@ -549,26 +551,52 @@
     const [tempPago, setTempPago] = useState(item.pago);
     const [tempPagamentos, setTempPagamentos] = useState([]);
     const [saving, setSaving] = useState(false);
+    const snapshot = useRef('');
 
     const trocoLinha = somaTroco(item.pagamentos);
     // Veículo pago: `valor` é o valor final recebido; `valorPrevisto` o da chegada.
     const previstoItem = (item.pago && item.valorPrevisto != null) ? Number(item.valorPrevisto) : null;
 
-    // Abre o editor sempre a partir do estado atual do veículo. Um veículo já
+    function estadoAtual(){
+      return JSON.stringify({ tempPlaca, tempTipo, tempValor, tempPago, tempPagamentos });
+    }
+
+    // Abre o popup sempre a partir do estado atual do veículo. Um veículo já
     // pago PODE ser reeditado (valor, método, troco) — podem ocorrer correções.
     function abrirEditor(){
-      setTempPlaca(item.placa);
-      setTempTipo(item.tipo);
-      const valorBase = previstoItem != null ? previstoItem : item.valor;
-      setTempValor(valorBase);
+      const placa = item.placa;
+      const tipo = item.tipo;
+      const valor = previstoItem != null ? previstoItem : item.valor;
+      const pagamentos = (item.pagamentos && item.pagamentos.length)
+              ? item.pagamentos.map(linhaDoServidor)
+              : [novaLinha(valor)];
+      setTempPlaca(placa);
+      setTempTipo(tipo);
+      setTempValor(valor);
       setTempPago(item.pago);
-      setTempPagamentos(
-              (item.pagamentos && item.pagamentos.length)
-                      ? item.pagamentos.map(linhaDoServidor)
-                      : [novaLinha(valorBase)]
-      );
+      setTempPagamentos(pagamentos);
+      snapshot.current = JSON.stringify({ tempPlaca: placa, tempTipo: tipo, tempValor: valor, tempPago: item.pago, tempPagamentos: pagamentos });
       setEditing(true);
     }
+
+    function tentarFechar(){
+      if(saving) return;
+      if(estadoAtual() !== snapshot.current && !confirm('Descartar as alterações deste veículo?')) return;
+      setEditing(false);
+    }
+
+    // Esc fecha o popup; o corpo da página não rola enquanto ele está aberto.
+    useEffect(()=>{
+      if(!editing) return;
+      const onKey = e => { if(e.key === 'Escape') tentarFechar(); };
+      const overflowAnterior = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', onKey);
+      return () => {
+        window.removeEventListener('keydown', onKey);
+        document.body.style.overflow = overflowAnterior;
+      };
+    });
 
     function togglePago(checked){
       setTempPago(checked);
@@ -587,10 +615,6 @@
       let valorEnvio = valorNum;
       let valorPrevisto = null;
       if(tempPago){
-        if(tempPagamentos.length === 0){
-          alert('Adicione ao menos uma forma de pagamento.');
-          return;
-        }
         const r = finalizarPagamento(tempPagamentos, valorNum);
         if(r.erro){ alert(r.erro); return; }
         if(r.cancelado) return;
@@ -613,6 +637,8 @@
         setSaving(false);
       }
     }
+
+    const fieldCls = "w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20";
 
     return (
             <div className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40 hover:shadow-sm transition animate-fadeIn">
@@ -643,8 +669,8 @@
                 <div className="flex items-center gap-3 shrink-0 ml-auto">
                   <div className="text-lg font-semibold">{formatBRL(item.valor)}</div>
                   <div className="flex items-center gap-1">
-                    <button onClick={()=> editing ? setEditing(false) : abrirEditor()} title="Editar veículo / pagamento"
-                            className={'p-2.5 sm:p-2 rounded-xl transition '+(editing ? 'bg-blue-600 text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800')}>
+                    <button onClick={abrirEditor} title={item.pago ? 'Editar veículo / pagamento' : 'Confirmar pagamento / editar'}
+                            className="p-2.5 sm:p-2 rounded-xl transition hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Icon name={item.pago ? 'pencil' : 'badge-check'} className="w-5 h-5" />
                     </button>
                     <button onClick={()=>onDelete(item.id)} title="Remover" className="p-2.5 sm:p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600"><Icon name="trash-2" className="w-5 h-5" /></button>
@@ -653,43 +679,58 @@
               </div>
 
               {editing && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-3 animate-fadeIn">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div>
-                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Placa</label>
-                            <input value={tempPlaca} onChange={e=>setTempPlaca(e.target.value)}
-                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
+                      // Popup: modal centralizado no desktop, "gaveta" que sobe de baixo no celular.
+                      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+                           onMouseDown={e=>{ if(e.target === e.currentTarget) tentarFechar(); }}>
+                        <div role="dialog" aria-modal="true" aria-label={'Pagamento ' + item.placa}
+                             className="w-full sm:max-w-lg max-h-[92dvh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 animate-slideUp sm:animate-pop">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold tracking-wide text-lg">{item.placa}</div>
+                              <div className="text-xs text-zinc-500 dark:text-zinc-400">Entrada {new Date(item.entrada).toLocaleString('pt-BR')}</div>
+                            </div>
+                            <button type="button" onClick={tentarFechar} title="Fechar (Esc)"
+                                    className="shrink-0 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                              <Icon name="x" className="w-5 h-5" />
+                            </button>
                           </div>
-                          <div>
-                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Tipo</label>
-                            <select value={tempTipo} onChange={e=>setTempTipo(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20">
-                              <option value="carro">Carro</option>
-                              <option value="moto">Moto</option>
-                            </select>
+
+                          <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div>
+                                <label className="text-xs text-zinc-500 dark:text-zinc-400">Placa</label>
+                                <input value={tempPlaca} onChange={e=>setTempPlaca(e.target.value)} className={fieldCls}/>
+                              </div>
+                              <div>
+                                <label className="text-xs text-zinc-500 dark:text-zinc-400">Tipo</label>
+                                <select value={tempTipo} onChange={e=>setTempTipo(e.target.value)} className={fieldCls}>
+                                  <option value="carro">Carro</option>
+                                  <option value="moto">Moto</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor previsto (R$)</label>
+                                <input type="number" step="0.01" min="0" value={tempValor}
+                                       onChange={e=>setTempValor(e.target.value.replace(',','.'))} className={fieldCls}/>
+                              </div>
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm">
+                              <input type="checkbox" checked={tempPago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-blue-600"/>
+                              Pagamento confirmado
+                            </label>
+
+                            {tempPago && (
+                                    <PaymentSplitEditor valorPrevisto={Number(tempValor)||0} pagamentos={tempPagamentos} setPagamentos={setTempPagamentos} />
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 flex-wrap pt-1">
+                              <button type="button" onClick={tentarFechar} className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800">Cancelar</button>
+                              <button type="button" onClick={salvar} disabled={saving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:brightness-110 disabled:opacity-50">
+                                {saving ? 'Salvando...' : 'Salvar'}
+                              </button>
+                            </div>
                           </div>
-                          <div>
-                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor previsto (R$)</label>
-                            <input type="number" step="0.01" min="0" value={tempValor}
-                                   onChange={e=>setTempValor(e.target.value.replace(',','.'))}
-                                   className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>
-                          </div>
-                        </div>
-
-                        <label className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={tempPago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-blue-600"/>
-                          Pagamento confirmado
-                        </label>
-
-                        {tempPago && (
-                                <PaymentSplitEditor valorPrevisto={Number(tempValor)||0} pagamentos={tempPagamentos} setPagamentos={setTempPagamentos} />
-                        )}
-
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          <button type="button" onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">Cancelar</button>
-                          <button type="button" onClick={salvar} disabled={saving} className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:brightness-110 disabled:opacity-50">
-                            {saving ? 'Salvando...' : 'Salvar'}
-                          </button>
                         </div>
                       </div>
               )}

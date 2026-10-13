@@ -10,27 +10,29 @@ import basquat.estacionamento.application.port.out.PagamentoRepositoryPort;
 import basquat.estacionamento.domain.exception.RecursoNaoEncontradoException;
 import basquat.estacionamento.domain.exception.RegraNegocioException;
 import basquat.estacionamento.domain.model.Auto;
-import basquat.estacionamento.infrastructure.event.EventoService;
+import basquat.estacionamento.application.port.in.AutoUseCase;
+import basquat.estacionamento.application.port.out.NotificadorPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-public class AutoServiceImpl {
+public class AutoServiceImpl implements AutoUseCase {
 
     private final AutoRepositoryPort autoRepository;
     private final PagamentoRepositoryPort pagamentoRepository;
-    private final EventoService eventoService;
+    private final NotificadorPort eventoService;
 
     public AutoServiceImpl(AutoRepositoryPort autoRepository,
                            PagamentoRepositoryPort pagamentoRepository,
-                           EventoService eventoService) {
+                           NotificadorPort eventoService) {
         this.autoRepository = autoRepository;
         this.pagamentoRepository = pagamentoRepository;
         this.eventoService = eventoService;
     }
 
+    @Override
     public AutoListResponse listar() {
         List<AutoResponse> autos = autoRepository.findAll().stream()
                 .map(Mapper::toResponse)
@@ -38,6 +40,7 @@ public class AutoServiceImpl {
         return new AutoListResponse(autos, autos.size());
     }
 
+    @Override
     public AutoResponse buscar(String id) {
         Auto model = autoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Automóvel não encontrado"));
@@ -45,6 +48,7 @@ public class AutoServiceImpl {
     }
 
     @Transactional
+    @Override
     public AutoResponse criar(AutoCreateRequest request) {
         Auto model = Mapper.toEntity(request);
         if (model.getPlaca() == null || model.getPlaca().isBlank()) {
@@ -59,6 +63,7 @@ public class AutoServiceImpl {
     }
 
     @Transactional
+    @Override
     public AutoResponse atualizar(String id, AutoUpdateRequest request) {
         Auto model = autoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Automóvel não encontrado"));
@@ -75,6 +80,7 @@ public class AutoServiceImpl {
     }
 
     @Transactional
+    @Override
     public void remover(String id) {
         if (!autoRepository.findById(id).isPresent()) {
             throw new RecursoNaoEncontradoException("Automóvel não encontrado");

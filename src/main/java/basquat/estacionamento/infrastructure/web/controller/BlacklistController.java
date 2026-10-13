@@ -2,7 +2,7 @@ package basquat.estacionamento.infrastructure.web.controller;
 
 import basquat.estacionamento.application.dto.request.BlacklistCreateRequest;
 import basquat.estacionamento.application.dto.response.BlacklistResponse;
-import basquat.estacionamento.application.service.BlacklistServiceImpl;
+import basquat.estacionamento.application.port.in.BlacklistUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +18,9 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class BlacklistController {
 
-    private final BlacklistServiceImpl blacklistService;
+    private final BlacklistUseCase blacklistService;
 
-    public BlacklistController(BlacklistServiceImpl blacklistService) {
+    public BlacklistController(BlacklistUseCase blacklistService) {
         this.blacklistService = blacklistService;
     }
 

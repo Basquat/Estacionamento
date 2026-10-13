@@ -126,6 +126,7 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
         pe.setMetodoPagamento(p.getMetodoPagamento());
         pe.setValor(p.getValor());
         pe.setTroco(p.getTroco());
+        pe.setData(p.getData());
         return pe;
     }
 }

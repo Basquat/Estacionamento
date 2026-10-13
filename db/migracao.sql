@@ -59,4 +59,22 @@ CREATE INDEX IF NOT EXISTS idx_blacklist_criado_em ON blacklist(criado_em DESC);
 -- CREATE POLICY "public auto_model" ON auto_model FOR ALL USING (true) WITH CHECK (true);
 -- CREATE POLICY "public pagamento"  ON pagamento  FOR ALL USING (true) WITH CHECK (true);
 
+-- 5) Integridade (migração v2) ------------------------------------------------
+--    a) Placa única sem diferenciar maiúscula/minúscula (o check do backend não
+--       é atômico; este índice é a garantia real). Se falhar com "duplicate key",
+--       há placas repetidas: veja com
+--         SELECT lower(placa), count(*) FROM auto_model GROUP BY 1 HAVING count(*) > 1;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_auto_model_placa_lower ON auto_model (lower(placa));
+
+--    b) pagamento.data passa a ser obrigatório (a entidade já exigia).
+UPDATE pagamento SET data = (extract(epoch FROM now()) * 1000)::bigint WHERE data IS NULL;
+ALTER TABLE pagamento ALTER COLUMN data SET NOT NULL;
+
+--    c) FK com cascade: apagar o veículo apaga seus pagamentos e impede órfãos.
+DELETE FROM pagamento WHERE auto_id NOT IN (SELECT id FROM auto_model);
+ALTER TABLE pagamento DROP CONSTRAINT IF EXISTS fk_pagamento_auto;
+ALTER TABLE pagamento
+    ADD CONSTRAINT fk_pagamento_auto FOREIGN KEY (auto_id)
+    REFERENCES auto_model(id) ON DELETE CASCADE;
+
 COMMIT;

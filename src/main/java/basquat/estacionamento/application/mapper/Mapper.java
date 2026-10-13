@@ -8,6 +8,8 @@ import basquat.estacionamento.application.dto.request.PagamentoRequest;
 import basquat.estacionamento.application.dto.response.AutoResponse;
 import basquat.estacionamento.application.dto.response.PagamentoResponse;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,12 +48,24 @@ public class Mapper {
         if (request.getPago() != null) model.setPago(request.getPago());
 
         if (request.getPagamentos() != null) {
-            model.getPagamentos().clear();
+            // Só reaproveita id/data de pagamentos que já pertencem a ESTE veículo;
+            // um id desconhecido vindo do cliente é ignorado (ganha UUID novo).
+            Map<String, Pagamento> existentes = new HashMap<>();
+            for (Pagamento antigo : model.getPagamentos()) existentes.put(antigo.getId(), antigo);
+
+            List<Pagamento> novos = new ArrayList<>();
             for (PagamentoRequest pr : request.getPagamentos()) {
                 Pagamento p = toPagamentoEntity(pr);
+                Pagamento antigo = pr.getId() == null ? null : existentes.get(pr.getId());
+                if (antigo != null) {
+                    p.setId(antigo.getId());
+                    p.setData(antigo.getData());
+                }
                 p.setAutoId(model.getId());
-                model.getPagamentos().add(p);
+                novos.add(p);
             }
+            model.getPagamentos().clear();
+            model.getPagamentos().addAll(novos);
         }
     }
 

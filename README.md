@@ -355,16 +355,6 @@ docker run -p 8080:8080 \
 
 ---
 
-## Segurança
-
-- **Senha do banco**: esteve versionada em commits anteriores. **Deve ser trocada** (Supabase → Project Settings → Database → *Reset database password*) e configurada apenas via variável de ambiente ou `application-local.properties`.
-- **Validação de entrada**: Bean Validation nos DTOs (`@NotBlank`, `@Positive`, etc.)
-- **SQL Injection**: Prevenido por JPA/Hibernate (parameterized queries)
-- **XSS**: Payloads armazenados como literais; frontend React faz escape automático
-- **Rate limiting / DoS**: Não implementado ainda (TODO: Spring Boot Actuator + Redis)
-
----
-
 ## Autor
 
 **João Daniel de Cerqueira Lisboa** · [GitHub @Basquat](https://github.com/Basquat) · [LinkedIn](https://www.linkedin.com/in/jo%C3%A3o-daniel-de-cerqueira-lisboa-0184a7356)

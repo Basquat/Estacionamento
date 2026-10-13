@@ -21,13 +21,19 @@ public class ApkController {
     private static final URI APK_URL = URI.create(
             "https://github.com/Basquat/Estacionamento/releases/download/apk-latest/Estaciona.apk");
 
-    private final HttpClient http = HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.ALWAYS)
-            .build();
+    // Criado só no primeiro download: uma falha aqui nunca pode impedir o app de subir.
+    private volatile HttpClient http;
+
+    private HttpClient http() {
+        if (http == null) {
+            http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
+        }
+        return http;
+    }
 
     @GetMapping("/baixar-apk")
     public ResponseEntity<byte[]> baixar() throws Exception {
-        HttpResponse<byte[]> r = http.send(HttpRequest.newBuilder(APK_URL).build(),
+        HttpResponse<byte[]> r = http().send(HttpRequest.newBuilder(APK_URL).build(),
                 HttpResponse.BodyHandlers.ofByteArray());
         if (r.statusCode() != 200) {
             return ResponseEntity.status(502).build();

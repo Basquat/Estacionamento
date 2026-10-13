@@ -226,7 +226,7 @@
 
   // Câmera ao vivo (getUserMedia): `<input capture>` é só uma dica e vários
   // navegadores de celular abrem a galeria mesmo assim. Exige HTTPS/localhost.
-  function CameraModal({onCapture, onClose, maxDim = 900, quality = 0.75}){
+  function CameraModal({onCapture, onFile, onClose, maxDim = 900, quality = 0.75}){
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const [erro, setErro] = useState('');
@@ -237,16 +237,18 @@
       (async ()=>{
         try{
           const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-          if(!ativo){ stream.getTracks().forEach(t=>t.stop()); return; }
+          if(!ativo || !videoRef.current){ stream.getTracks().forEach(t=>t.stop()); return; }
           streamRef.current = stream;
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
           setPronta(true);
         }catch(e){
-          if(ativo) setErro('Não foi possível abrir a câmera. Libere a permissão de câmera no navegador.');
+          if(ativo) setErro('A câmera ao vivo não está disponível neste aplicativo/navegador. Use a câmera do aparelho:');
         }
       })();
-      return ()=>{ ativo = false; streamRef.current?.getTracks().forEach(t=>t.stop()); };
+      // Alguns WebViews deixam o getUserMedia pendente para sempre (sem negar nem abrir).
+      const t = setTimeout(()=>{ if(ativo && !streamRef.current) setErro('A câmera ao vivo não está disponível neste aplicativo/navegador. Use a câmera do aparelho:'); }, 6000);
+      return ()=>{ ativo = false; clearTimeout(t); streamRef.current?.getTracks().forEach(t=>t.stop()); };
     }, []);
 
     function capturar(){
@@ -264,7 +266,13 @@
       <div className="fixed inset-0 z-[70] bg-black flex flex-col">
         <div className="flex-1 min-h-0 flex items-center justify-center">
           {erro
-            ? <div className="text-white text-sm text-center p-6">{erro}</div>
+            ? <div className="text-white text-sm text-center p-6 grid gap-4 justify-items-center">
+                <div>{erro}</div>
+                <label className="cursor-pointer px-5 py-3 rounded-xl bg-white text-black font-semibold">
+                  Abrir câmera do aparelho
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile}/>
+                </label>
+              </div>
             : <video ref={videoRef} playsInline muted className="max-w-full max-h-full"/>}
         </div>
         <div className="flex items-center justify-center gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -829,7 +837,8 @@
               )}
 
               {camera && (
-                <CameraModal onClose={()=>setCamera(false)} onCapture={d=>{ setTempFoto(d); setCamera(false); }}/>
+                <CameraModal onClose={()=>setCamera(false)} onCapture={d=>{ setTempFoto(d); setCamera(false); }}
+                             onFile={e=>{ handleFoto(e); setCamera(false); }}/>
               )}
 
               {verFoto && item.foto && (

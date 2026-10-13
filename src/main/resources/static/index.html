@@ -162,8 +162,8 @@
     return (linhas || []).reduce((s, l) => s + (l.trocos || []).reduce((t, x) => t + (Number(x.valor) || 0), 0), 0);
   }
 
-  // Valida as linhas e exige que o recebido (soma - troco) feche o valor do veículo.
-  // Retorna { erro } | { pagamentos, valorFinal }.
+  // Valida as linhas, calcula o valor final (recebido - troco) e, se diferir
+  // do previsto, pede confirmação. Retorna { erro } | { cancelado } | { pagamentos, valorFinal }.
   function finalizarPagamento(linhas, previsto){
     if(!linhas || linhas.length === 0) return { erro: 'Adicione ao menos uma forma de pagamento.' };
     const pagamentos = [];
@@ -185,8 +185,11 @@
     }
     const valorFinal = round2(somaPagamentos(pagamentos) - somaTroco(pagamentos));
     if(valorFinal <= 0) return { erro: 'O valor recebido (descontado o troco) precisa ser maior que zero.' };
-    if(Math.abs(valorFinal - round2(previsto)) > 0.01){
-      return { erro: 'O valor recebido (' + formatBRL(valorFinal) + '), descontado o troco, precisa ser igual ao valor total (' + formatBRL(round2(previsto)) + ').' };
+    const prev = round2(previsto);
+    if(Math.abs(valorFinal - prev) > 0.01){
+      const ok = confirm('O valor recebido (' + formatBRL(valorFinal) + ') é diferente do previsto (' + formatBRL(prev) + '): '
+              + (valorFinal > prev ? '+' : '-') + formatBRL(Math.abs(valorFinal - prev)) + '.\n\nConfirmar mesmo assim?');
+      if(!ok) return { cancelado: true };
     }
     return { pagamentos, valorFinal };
   }
@@ -327,12 +330,14 @@
 
   // Editor de pagamento dividido. `valor` de cada linha = o que o cliente
   // ENTREGOU naquela forma; o troco devolvido (dinheiro e/ou Pix) é descontado.
-  // Recebido = soma das linhas - trocos e precisa fechar o valor do veículo.
+  // Valor final = soma das linhas - trocos. Não precisa bater com o previsto:
+  // se for diferente, o salvamento pede confirmação.
   function PaymentSplitEditor({valorPrevisto, pagamentos, setPagamentos}){
     const bruto = somaPagamentos(pagamentos);
     const trocoTotal = somaTrocosUI(pagamentos);
     const liquido = round2(bruto - trocoTotal);
     const previsto = round2(valorPrevisto);
+    const dif = round2(liquido - previsto);
     const restante = round2(previsto - liquido);
 
     function addLinha(){
@@ -425,10 +430,11 @@
                             Troco {formatBRL(trocoTotal)}
                           </span>
                   )}
-                  <span className={'text-xs font-semibold px-2 py-1 rounded-lg '+(Math.abs(restante) < 0.01 ? 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/30' : 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/30')}>
-                    {Math.abs(restante) < 0.01
-                            ? 'Total conferido ✓'
-                            : (restante > 0 ? `Falta ${formatBRL(restante)}` : `Excedeu ${formatBRL(-restante)}`)}
+                  <span className="text-xs font-semibold px-2 py-1 rounded-lg text-zinc-700 bg-zinc-200 dark:text-zinc-200 dark:bg-zinc-700">
+                    Recebido {formatBRL(liquido)}
+                  </span>
+                  <span className={'text-xs font-semibold px-2 py-1 rounded-lg '+(Math.abs(dif) < 0.01 ? 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/30' : 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/30')}>
+                    {Math.abs(dif) < 0.01 ? 'Igual ao previsto ✓' : ((dif > 0 ? '+' : '-') + formatBRL(Math.abs(dif)) + ' vs previsto')}
                   </span>
                 </div>
               </div>
@@ -459,17 +465,23 @@
       if(!placa.trim() || saving) return;
 
       let pagamentosFinal = [];
+      let valorEnvio = Number(valor) || 0;
+      let valorPrevisto = null;
       if(pago){
         const r = finalizarPagamento(pagamentos, valor);
         if(r.erro){ alert(r.erro); return; }
+        if(r.cancelado) return;
         pagamentosFinal = r.pagamentos;
+        valorPrevisto = Number(valor) || 0;
+        valorEnvio = r.valorFinal;
       }
 
       const novo = {
         id: uuid(),
         placa: placa.trim().toUpperCase(),
         tipo,
-        valor: Number(valor)||0,
+        valor: valorEnvio,
+        valorPrevisto,
         pago,
         pagamentos: pagamentosFinal,
         entrada: Date.now()
@@ -539,18 +551,21 @@
     const [saving, setSaving] = useState(false);
 
     const trocoLinha = somaTroco(item.pagamentos);
+    // Veículo pago: `valor` é o valor final recebido; `valorPrevisto` o da chegada.
+    const previstoItem = (item.pago && item.valorPrevisto != null) ? Number(item.valorPrevisto) : null;
 
     // Abre o editor sempre a partir do estado atual do veículo. Um veículo já
     // pago PODE ser reeditado (valor, método, troco) — podem ocorrer correções.
     function abrirEditor(){
       setTempPlaca(item.placa);
       setTempTipo(item.tipo);
-      setTempValor(item.valor);
+      const valorBase = previstoItem != null ? previstoItem : item.valor;
+      setTempValor(valorBase);
       setTempPago(item.pago);
       setTempPagamentos(
               (item.pagamentos && item.pagamentos.length)
                       ? item.pagamentos.map(linhaDoServidor)
-                      : [novaLinha(item.valor)]
+                      : [novaLinha(valorBase)]
       );
       setEditing(true);
     }
@@ -569,6 +584,8 @@
       if(saving) return;
       const valorNum = Number(tempValor) || 0;
       let pagamentosFinal = [];
+      let valorEnvio = valorNum;
+      let valorPrevisto = null;
       if(tempPago){
         if(tempPagamentos.length === 0){
           alert('Adicione ao menos uma forma de pagamento.');
@@ -576,14 +593,18 @@
         }
         const r = finalizarPagamento(tempPagamentos, valorNum);
         if(r.erro){ alert(r.erro); return; }
+        if(r.cancelado) return;
         pagamentosFinal = r.pagamentos;
+        valorEnvio = r.valorFinal;
+        valorPrevisto = valorNum;
       }
       setSaving(true);
       try{
         await onUpdate(item.id, {
           placa: (tempPlaca || '').trim().toUpperCase(),
           tipo: tempTipo,
-          valor: valorNum,
+          valor: valorEnvio,
+          valorPrevisto,
           pago: tempPago,
           pagamentos: pagamentosFinal,
         });
@@ -615,6 +636,9 @@
                           ? ('Pago (' + (item.pagamentos||[]).map(p => metodoLabel(p.metodo) + ' ' + formatBRL(p.valor)).join(' + ')
                                   + (trocoLinha > 0 ? ' · troco ' + formatBRL(trocoLinha) : '') + ')')
                           : 'Pendente'}
+                  {previstoItem != null && Math.abs(previstoItem - item.valor) > 0.01 && (
+                          <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400">previsto {formatBRL(previstoItem)}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0 ml-auto">
                   <div className="text-lg font-semibold">{formatBRL(item.valor)}</div>
@@ -645,7 +669,7 @@
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor (R$)</label>
+                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Valor previsto (R$)</label>
                             <input type="number" step="0.01" min="0" value={tempValor}
                                    onChange={e=>setTempValor(e.target.value.replace(',','.'))}
                                    className="w-full mt-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 outline-none focus:ring-4 focus:ring-blue-500/20"/>

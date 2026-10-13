@@ -107,8 +107,6 @@ Aplicação **fullstack de página única** para controlar entrada, pagamento e 
 
 ```
 Estacionamento/
-├── db/
-│   └── migracao.sql                          # Migração Supabase (rodar 1x)
 ├── src/main/
 │   ├── java/basquat/estacionamento/
 │   │   ├── EstacionamentoApplication.java
@@ -323,14 +321,13 @@ cp src/main/resources/application-local.properties.example \
 
 ```bash
 # 1. Configure o application-local.properties (acima)
-# 2. Rode a migração do banco uma vez — db/migracao.sql — no SQL Editor do Supabase
-# 3. Suba a aplicação
+# 2. Suba a aplicação
 ./mvnw spring-boot:run
 ```
 
 Abra **http://localhost:8080** — frontend e API na mesma porta.
 
-O `spring.jpa.hibernate.ddl-auto=update` cria/ajusta as tabelas sozinho; `db/migracao.sql` só limpa dados de teste antigos da tabela `pagamento` e garante a coluna `troco`.
+O `spring.jpa.hibernate.ddl-auto=update` cria/ajusta as tabelas sozinho em dev; em produção (`ddl-auto=none`) o schema é alterado à mão no Supabase.
 
 ---
 

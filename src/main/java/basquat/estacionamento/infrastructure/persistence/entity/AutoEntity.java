@@ -36,6 +36,9 @@ public class AutoEntity {
     @Column(name = "entrada", nullable = false)
     private Long entrada;
 
+    @Column(name = "foto", columnDefinition = "TEXT")
+    private String foto;
+
     @OneToMany(cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @BatchSize(size = 200)
     @JoinColumn(
@@ -111,5 +114,13 @@ public class AutoEntity {
 
     public void setValorPrevisto(Double valorPrevisto) {
         this.valorPrevisto = valorPrevisto;
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 }

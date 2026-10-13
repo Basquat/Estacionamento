@@ -12,6 +12,7 @@ public class AutoResponse {
     private Boolean pago;
     private Long entrada;
     private List<PagamentoResponse> pagamentos;
+    private String foto; // data URL base64; null = sem foto
 
     public AutoResponse() {}
 
@@ -87,5 +88,13 @@ public class AutoResponse {
 
     public void setValorPrevisto(Double valorPrevisto) {
         this.valorPrevisto = valorPrevisto;
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 }

@@ -17,6 +17,7 @@ public class Auto {
     private Boolean pago;
     private Long entrada;
     private List<Pagamento> pagamentos = new ArrayList<>();
+    private String foto; // data URL base64; null = sem foto
 
     public Auto() {}
 
@@ -95,5 +96,13 @@ public class Auto {
 
     public void setValorPrevisto(Double valorPrevisto) {
         this.valorPrevisto = valorPrevisto;
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 }

@@ -10,6 +10,7 @@ public class AutoUpdateRequest {
     private Double valorPrevisto;
     private Boolean pago;
     private List<PagamentoRequest> pagamentos;
+    private String foto; // data URL base64; null = sem foto
 
     public AutoUpdateRequest() {}
 
@@ -67,5 +68,13 @@ public class AutoUpdateRequest {
 
     public void setValorPrevisto(Double valorPrevisto) {
         this.valorPrevisto = valorPrevisto;
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 }

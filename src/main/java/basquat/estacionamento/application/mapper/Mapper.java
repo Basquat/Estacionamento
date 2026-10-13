@@ -47,6 +47,8 @@ public class Mapper {
         if (request.getTipo() != null) model.setTipo(request.getTipo());
         if (request.getValor() != null) model.setValor(request.getValor());
         if (request.getPago() != null) model.setPago(request.getPago());
+        // null = não mexe; "" = remove a foto
+        if (request.getFoto() != null) model.setFoto(request.getFoto().isBlank() ? null : request.getFoto());
         if (request.getValorPrevisto() != null) model.setValorPrevisto(request.getValorPrevisto());
 
         if (request.getPagamentos() != null) {
@@ -91,6 +93,7 @@ public class Mapper {
             pagamentosResponse
         );
         response.setValorPrevisto(model.getValorPrevisto());
+        response.setFoto(model.getFoto());
         return response;
     }
 

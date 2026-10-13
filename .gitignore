@@ -41,3 +41,10 @@ build/
 ### Pastas locais (não versionar) ###
 db/
 docs/
+
+### Nunca em produção: SQL, docs e config do Claude (só o README sobe) ###
+*.sql
+*.md
+!README.md
+CLAUDE.md
+.claude/

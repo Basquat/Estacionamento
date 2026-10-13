@@ -552,13 +552,28 @@
     const [tempPagamentos, setTempPagamentos] = useState([]);
     const [saving, setSaving] = useState(false);
     const snapshot = useRef('');
+    const [tempFoto, setTempFoto] = useState(item.foto || null);
+    const [erroFoto, setErroFoto] = useState('');
+    const [verFoto, setVerFoto] = useState(false);
+
+    async function handleFoto(e){
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if(!file) return;
+      setErroFoto('');
+      try{
+        setTempFoto(await resizeImageFile(file));
+      }catch(err){
+        setErroFoto(err.message || 'Falha ao processar a foto');
+      }
+    }
 
     const trocoLinha = somaTroco(item.pagamentos);
     // Veículo pago: `valor` é o valor final recebido; `valorPrevisto` o da chegada.
     const previstoItem = (item.pago && item.valorPrevisto != null) ? Number(item.valorPrevisto) : null;
 
     function estadoAtual(){
-      return JSON.stringify({ tempPlaca, tempTipo, tempValor, tempPago, tempPagamentos });
+      return JSON.stringify({ tempPlaca, tempTipo, tempValor, tempPago, tempPagamentos, tempFoto });
     }
 
     // Abre o popup sempre a partir do estado atual do veículo. Um veículo já
@@ -575,7 +590,9 @@
       setTempValor(valor);
       setTempPago(item.pago);
       setTempPagamentos(pagamentos);
-      snapshot.current = JSON.stringify({ tempPlaca: placa, tempTipo: tipo, tempValor: valor, tempPago: item.pago, tempPagamentos: pagamentos });
+      setTempFoto(item.foto || null);
+      setErroFoto('');
+      snapshot.current = JSON.stringify({ tempPlaca: placa, tempTipo: tipo, tempValor: valor, tempPago: item.pago, tempPagamentos: pagamentos, tempFoto: item.foto || null });
       setEditing(true);
     }
 
@@ -631,6 +648,7 @@
           valorPrevisto,
           pago: tempPago,
           pagamentos: pagamentosFinal,
+          foto: tempFoto || '', // '' = sem foto / remover
         });
         setEditing(false);
       } finally {
@@ -643,9 +661,15 @@
     return (
             <div className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/40 hover:shadow-sm transition animate-fadeIn">
               <div className="flex items-center gap-3">
+            {item.foto ? (
+              <button type="button" onClick={()=>setVerFoto(true)} title="Ver foto" className="w-10 h-10 shrink-0 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                <img src={item.foto} alt={'Foto de ' + item.placa} className="w-full h-full object-cover"/>
+              </button>
+            ) : (
             <span className={'inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-xl '+(item.tipo==='carro' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300')}>
               <Icon name={item.tipo==='carro'?'car':'motorbike'} className="w-5 h-5" />
             </span>
+            )}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold tracking-wide">{item.placa}</div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(item.entrada).toLocaleString('pt-BR')}</div>
@@ -715,6 +739,21 @@
                               </div>
                             </div>
 
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm">
+                                <Icon name="camera" className="w-4 h-4 shrink-0" />
+                                <span>{tempFoto ? 'Trocar foto' : 'Fotografar'}</span>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto}/>
+                              </label>
+                              {tempFoto && (
+                                <>
+                                  <img src={tempFoto} alt="Prévia" className="w-12 h-12 rounded-xl object-cover border border-zinc-200 dark:border-zinc-800"/>
+                                  <button type="button" onClick={()=>setTempFoto(null)} className="text-xs text-red-600 hover:underline">Remover foto</button>
+                                </>
+                              )}
+                              {erroFoto && <div className="text-xs text-red-600">{erroFoto}</div>}
+                            </div>
+
                             <label className="flex items-center gap-2 text-sm">
                               <input type="checkbox" checked={tempPago} onChange={e=>togglePago(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-blue-600"/>
                               Pagamento confirmado
@@ -733,6 +772,12 @@
                           </div>
                         </div>
                       </div>
+              )}
+
+              {verFoto && item.foto && (
+                <div onClick={()=>setVerFoto(false)} className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4 animate-fadeIn">
+                  <img src={item.foto} alt={'Foto de ' + item.placa} className="max-w-full max-h-full rounded-xl object-contain"/>
+                </div>
               )}
             </div>
     )

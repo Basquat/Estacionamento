@@ -81,6 +81,7 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
                 pagamentos
         );
         auto.setValorPrevisto(e.getValorPrevisto());
+        auto.setFoto(e.getFoto());
         return auto;
     }
 
@@ -106,6 +107,7 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
         e.setValorPrevisto(a.getValorPrevisto());
         e.setPago(a.getPago());
         e.setEntrada(a.getEntrada());
+        e.setFoto(a.getFoto());
 
         List<PagamentoEntity> pagamentos = new ArrayList<>();
         if (a.getPagamentos() != null) {

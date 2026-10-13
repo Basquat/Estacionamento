@@ -27,6 +27,9 @@ public class AutoEntity {
     @Column(name = "valor", nullable = false)
     private double valor;
 
+    @Column(name = "valor_previsto")
+    private Double valorPrevisto;
+
     @Column(name = "pago", nullable = false)
     private Boolean pago;
 
@@ -100,5 +103,13 @@ public class AutoEntity {
         if (pagamentos != null) {
             this.pagamentos.addAll(pagamentos);
         }
+    }
+
+    public Double getValorPrevisto() {
+        return valorPrevisto;
+    }
+
+    public void setValorPrevisto(Double valorPrevisto) {
+        this.valorPrevisto = valorPrevisto;
     }
 }

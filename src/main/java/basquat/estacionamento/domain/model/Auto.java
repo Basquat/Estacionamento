@@ -13,6 +13,7 @@ public class Auto {
     private String placa;
     private String tipo;
     private double valor;
+    private Double valorPrevisto;
     private Boolean pago;
     private Long entrada;
     private List<Pagamento> pagamentos = new ArrayList<>();
@@ -86,5 +87,13 @@ public class Auto {
         if (pagamentos != null) {
             this.pagamentos.addAll(pagamentos);
         }
+    }
+
+    public Double getValorPrevisto() {
+        return valorPrevisto;
+    }
+
+    public void setValorPrevisto(Double valorPrevisto) {
+        this.valorPrevisto = valorPrevisto;
     }
 }

@@ -4,7 +4,7 @@ import basquat.estacionamento.application.dto.request.AutoCreateRequest;
 import basquat.estacionamento.application.dto.request.AutoUpdateRequest;
 import basquat.estacionamento.application.dto.response.AutoListResponse;
 import basquat.estacionamento.application.dto.response.AutoResponse;
-import basquat.estacionamento.application.service.AutoServiceImpl;
+import basquat.estacionamento.application.port.in.AutoUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +20,9 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class AutoController {
 
-    private final AutoServiceImpl autoService;
+    private final AutoUseCase autoService;
 
-    public AutoController(AutoServiceImpl autoService) {
+    public AutoController(AutoUseCase autoService) {
         this.autoService = autoService;
     }
 

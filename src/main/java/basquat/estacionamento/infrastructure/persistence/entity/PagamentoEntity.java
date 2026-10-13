@@ -1,6 +1,5 @@
 package basquat.estacionamento.infrastructure.persistence.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.util.UUID;
 
@@ -20,7 +19,6 @@ public class PagamentoEntity {
     private String autoId;
 
     @Column(name = "metodo_pagamento", nullable = false)
-    @JsonProperty("metodo")
     private String metodoPagamento;
 
     @Column(name = "valor", nullable = false)

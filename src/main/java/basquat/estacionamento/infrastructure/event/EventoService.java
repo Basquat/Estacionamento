@@ -8,7 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * Fica em infrastructure.event.
  */
 @Service
-public class EventoService {
+public class EventoService implements basquat.estacionamento.application.port.out.NotificadorPort {
 
     private final java.util.List<SseEmitter> emitters = new java.util.ArrayList<>();
 
@@ -19,6 +19,7 @@ public class EventoService {
         return emitter;
     }
 
+    @Override
     public void notificar() {
         for (SseEmitter emitter : emitters) {
             try {

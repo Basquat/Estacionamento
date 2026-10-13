@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Positive;
 
 public class PagamentoRequest {
 
+    /** Opcional: id de um pagamento já existente do mesmo veículo (preserva id e data). */
+    private String id;
+
     @NotBlank(message = "O método de pagamento é obrigatório")
     private String metodo;
 
@@ -21,6 +24,14 @@ public class PagamentoRequest {
         this.metodo = metodo;
         this.valor = valor;
         this.troco = troco;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getMetodo() {

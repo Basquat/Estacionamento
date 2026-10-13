@@ -22,7 +22,7 @@ public class EventoService {
     public void notificar() {
         for (SseEmitter emitter : emitters) {
             try {
-                emitter.send(SseEmitter.event().name("update").data("atualizado"));
+                emitter.send(SseEmitter.event().name("atualizacao").data("atualizado"));
             } catch (Exception e) {
                 emitters.remove(emitter);
             }

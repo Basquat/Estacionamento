@@ -14,21 +14,26 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RegraNegocioException.class)
-    public ResponseEntity<Map<String, String>> handleRegraNegocio(RegraNegocioException ex) {
-        return ResponseEntity.badRequest().body(Map.of("erro", ex.getMessage()));
+    public ResponseEntity<Map<String, Object>> handleRegraNegocio(RegraNegocioException ex) {
+        return ResponseEntity.status(409).body(Map.of("status", 409, "message", ex.getMessage()));
     }
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
-    public ResponseEntity<Map<String, String>> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
-        return ResponseEntity.status(404).body(Map.of("erro", ex.getMessage()));
+    public ResponseEntity<Map<String, Object>> handleNaoEncontrado(RecursoNaoEncontradoException ex) {
+        return ResponseEntity.status(404).body(Map.of("status", 404, "message", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidacao(MethodArgumentNotValidException ex) {
-        Map<String, String> erros = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleValidacao(MethodArgumentNotValidException ex) {
+        Map<String, Object> erros = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(e ->
             erros.put(e.getField(), e.getDefaultMessage())
         );
-        return ResponseEntity.badRequest().body(erros);
+        return ResponseEntity.badRequest().body(Map.of("status", 400, "message", "Erro de validação", "erros", erros));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGenerico(Exception ex) {
+        return ResponseEntity.badRequest().body(Map.of("status", 400, "message", "Erro ao processar a requisição"));
     }
 }

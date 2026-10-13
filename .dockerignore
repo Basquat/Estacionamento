@@ -10,3 +10,5 @@ dist
 build
 .gradle
 .terraform
+mobile
+.github

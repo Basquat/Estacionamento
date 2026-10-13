@@ -48,3 +48,7 @@ docs/
 !README.md
 CLAUDE.md
 .claude/
+
+### Mobile (APK) ###
+mobile/node_modules/
+mobile/android/

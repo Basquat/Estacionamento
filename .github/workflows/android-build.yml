@@ -53,6 +53,18 @@ jobs:
 
       - run: npx cap sync android
 
+      - name: Chave de assinatura fixa (permite atualizar sem desinstalar)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Usando chave fixa."
+          else
+            echo "::warning::Secret ANDROID_KEYSTORE_B64 ausente: APK assinado com chave aleatoria (nao atualiza por cima)."
+          fi
+
       - name: Compilar APK
         working-directory: mobile/android
         run: |

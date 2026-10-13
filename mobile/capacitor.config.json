@@ -1,5 +1,9 @@
 {
   "appId": "com.basquat.estacionamento",
   "appName": "Estaciona+",
-  "webDir": "../src/main/resources/static"
+  "webDir": "../src/main/resources/static",
+  "server": {
+    "url": "https://estacionamento-uers.onrender.com",
+    "cleartext": false
+  }
 }

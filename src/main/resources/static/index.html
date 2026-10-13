@@ -91,7 +91,7 @@
     return <span ref={ref} style={{display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center'}}></span>;
   }
 
-  const API_ROOT = (document.querySelector('meta[name="api-base"]')?.content || '').replace(/\/+$/, '');
+  const API_ROOT = (document.querySelector('meta[name="api-base"]')?.content || (window.Capacitor?.isNativePlatform?.() ? '/api' : '')).replace(/\/+$/, '');
   const API_BASE = API_ROOT + '/Automoveis';
 
   // "Início" já traz tudo que é preciso para operar (resumo + cadastro +
@@ -234,6 +234,8 @@
     const streamRef = useRef(null);
     const [erro, setErro] = useState('');
     const [pronta, setPronta] = useState(false);
+    const [temFlash, setTemFlash] = useState(false);
+    const [flash, setFlash] = useState(false);
 
     useEffect(()=>{
       let ativo = true;
@@ -244,6 +246,7 @@
           streamRef.current = stream;
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
+          setTemFlash(!!stream.getVideoTracks()[0]?.getCapabilities?.().torch);
           setPronta(true);
         }catch(e){
           if(ativo) setErro('A câmera ao vivo não está disponível neste aplicativo/navegador. Use a câmera do aparelho:');
@@ -253,6 +256,13 @@
       const t = setTimeout(()=>{ if(ativo && !streamRef.current) setErro('A câmera ao vivo não está disponível neste aplicativo/navegador. Use a câmera do aparelho:'); }, 6000);
       return ()=>{ ativo = false; clearTimeout(t); streamRef.current?.getTracks().forEach(t=>t.stop()); };
     }, []);
+
+    async function alternarFlash(){
+      try{
+        await streamRef.current.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: !flash }] });
+        setFlash(!flash);
+      }catch(e){ setTemFlash(false); }
+    }
 
     function capturar(){
       const v = videoRef.current;
@@ -280,6 +290,12 @@
         </div>
         <div className="flex items-center justify-center gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button type="button" onClick={onClose} className="px-4 py-3 rounded-xl bg-white/15 text-white">Cancelar</button>
+          {!erro && temFlash && (
+            <button type="button" onClick={alternarFlash} aria-pressed={flash}
+                    className={'px-4 py-3 rounded-xl inline-flex items-center gap-2 ' + (flash ? 'bg-amber-400 text-black' : 'bg-white/15 text-white')}>
+              <Icon name="zap" className="w-4 h-4" /> Flash {flash ? 'ligado' : 'desligado'}
+            </button>
+          )}
           {!erro && <button type="button" onClick={capturar} disabled={!pronta} className="px-6 py-3 rounded-xl bg-white text-black font-semibold disabled:opacity-50">Tirar foto</button>}
         </div>
       </div>

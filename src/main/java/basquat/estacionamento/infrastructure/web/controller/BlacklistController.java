@@ -14,7 +14,7 @@ import java.util.List;
  * Fica em infrastructure.web.controller.
  */
 @RestController
-@RequestMapping("/Blacklist")
+@RequestMapping({"/Blacklist", "/api/Blacklist"})
 @CrossOrigin(origins = "*")
 public class BlacklistController {
 

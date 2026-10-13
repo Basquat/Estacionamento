@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Vazio na web. O workflow do APK preenche com https://.../api -->
+  <meta name="api-base" content="" />
   <title>Estaciona+ • Controle de Placas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,7 +91,8 @@
     return <span ref={ref} style={{display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center'}}></span>;
   }
 
-  const API_BASE = '/Automoveis';
+  const API_ROOT = (document.querySelector('meta[name="api-base"]')?.content || '').replace(/\/+$/, '');
+  const API_BASE = API_ROOT + '/Automoveis';
 
   // "Início" já traz tudo que é preciso para operar (resumo + cadastro +
   // lista), por isso não existe um botão "Placas" separado.
@@ -1200,7 +1203,7 @@
     // Atualização em tempo real via Server-Sent Events. O EventSource reconecta
     // sozinho se a conexão cair (comportamento padrão do browser).
     useEffect(()=>{
-      const src = new EventSource('/eventos');
+      const src = new EventSource(API_ROOT + '/eventos');
       let timer = null;
       let vivo = true;
 
@@ -1357,7 +1360,7 @@
 
     async function loadBlacklist(){
       try {
-        const res = await fetch('/Blacklist');
+        const res = await fetch(API_ROOT + '/Blacklist');
         if (!res.ok) throw new Error(await parseErro(res, 'Falha ao carregar blacklist'));
         setBlacklist(await res.json());
       } catch (err) {
@@ -1367,7 +1370,7 @@
 
     async function addBlacklistEntry(novo){
       try {
-        const res = await fetch('/Blacklist/Add', {
+        const res = await fetch(API_ROOT + '/Blacklist/Add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(novo)
@@ -1386,7 +1389,7 @@
       marcarAcaoLocal();
       setBlacklist(prev => prev.filter(i => i.id !== id));
       try {
-        const res = await fetch('/Blacklist/' + id, { method: 'DELETE' });
+        const res = await fetch(API_ROOT + '/Blacklist/' + id, { method: 'DELETE' });
         if (!res.ok && res.status !== 204) throw new Error(await parseErro(res, 'Erro ao remover'));
       } catch (err) {
         setBlacklist(anterior);

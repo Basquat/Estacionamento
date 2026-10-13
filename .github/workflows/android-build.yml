@@ -1,10 +1,14 @@
-name: Gerar APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      api-base-url:
+        description: 'URL base da API (termina em /api)'
+        required: true
+        default: 'https://estacionamento-uers.onrender.com/api'
   push:
     branches: [Main]
-    paths: ['mobile/**', '.github/workflows/android-apk.yml']
 
 permissions:
   contents: write
@@ -26,6 +30,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Configurar URL da API no index.html
+        run: |
+          API_URL="${{ github.event.inputs.api-base-url || 'https://estacionamento-uers.onrender.com/api' }}"
+          sed -i "s|<meta name=\"api-base\" content=\"\" />|<meta name=\"api-base\" content=\"$API_URL\" />|" ../src/main/resources/static/index.html
+          grep '<meta name="api-base"' ../src/main/resources/static/index.html
 
       - name: Instalar dependências e criar projeto Android
         run: |

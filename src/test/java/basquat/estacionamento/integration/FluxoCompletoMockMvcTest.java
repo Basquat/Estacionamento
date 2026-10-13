@@ -46,6 +46,18 @@ class FluxoCompletoMockMvcTest {
     }
 
     @Test
+    void prefixoApiResponde_eLiberaCorsDoApk() throws Exception {
+        mvc.perform(get("/api/Automoveis")).andExpect(status().isOk());
+        mvc.perform(get("/api/Blacklist")).andExpect(status().isOk());
+        mvc.perform(options("/api/Automoveis")
+                        .header("Origin", "https://localhost")
+                        .header("Access-Control-Request-Method", "PUT"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://localhost"));
+        mvc.perform(get("/Automoveis")).andExpect(status().isOk());
+    }
+
+    @Test
     void listaVeiculoPendenteNoFormatoNovo() throws Exception {
         String id = JsonPath.read(criar("{\"placa\":\"LST0001\",\"tipo\":\"carro\",\"valor\":25}"), "$.id");
 

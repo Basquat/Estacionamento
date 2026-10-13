@@ -21,7 +21,7 @@ public class EventoController {
         this.eventoService = eventoService;
     }
 
-    @GetMapping(value = "/eventos", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = {"/eventos", "/api/eventos"}, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
         return eventoService.createEmitter();
     }

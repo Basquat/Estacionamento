@@ -16,7 +16,7 @@ import java.util.List;
  * Fica em infrastructure.web.controller.
  */
 @RestController
-@RequestMapping("/Automoveis")
+@RequestMapping({"/Automoveis", "/api/Automoveis"})
 @CrossOrigin(origins = "*")
 public class AutoController {
 

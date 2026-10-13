@@ -97,7 +97,8 @@ public class Mapper {
         p.setId(UUID.randomUUID().toString());
         p.setMetodoPagamento(request.getMetodo());
         p.setValor(request.getValor());
-        p.setTroco(request.getTroco());
+        p.setTrocoDinheiro(request.getTrocoDinheiro());
+        p.setTrocoPix(request.getTrocoPix());
         return p;
     }
 
@@ -108,7 +109,8 @@ public class Mapper {
             entity.getId(),
             entity.getMetodoPagamento(),
             entity.getValor(),
-            entity.getTroco(),
+            entity.getTrocoDinheiro(),
+            entity.getTrocoPix(),
             entity.getData()
         );
     }

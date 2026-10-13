@@ -15,11 +15,11 @@ class MapperTest {
     @Test
     void updatePreservaIdEDataDePagamentoExistenteEIgnoraIdAlheio() {
         Auto auto = new Auto("a1", "ABC1234", "carro", 10.0, false, 1L, new java.util.ArrayList<>(List.of(
-                new Pagamento("p1", "a1", "pix", 10.0, 0.0, 111L))));
+                new Pagamento("p1", "a1", "pix", 10.0, 0.0, 0.0, 111L))));
 
-        PagamentoRequest existente = new PagamentoRequest("pix", 6.0, 0.0);
+        PagamentoRequest existente = new PagamentoRequest("pix", 6.0, 0.0, 0.0);
         existente.setId("p1");
-        PagamentoRequest alheio = new PagamentoRequest("dinheiro", 4.0, 0.0);
+        PagamentoRequest alheio = new PagamentoRequest("dinheiro", 4.0, 0.0, 0.0);
         alheio.setId("de-outro-veiculo");
 
         Mapper.updateEntity(auto, new AutoUpdateRequest(null, null, null, true, List.of(existente, alheio)));

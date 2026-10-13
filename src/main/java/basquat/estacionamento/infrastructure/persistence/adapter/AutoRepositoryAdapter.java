@@ -88,7 +88,8 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
                 pe.getAutoId(),
                 pe.getMetodoPagamento(),
                 pe.getValor(),
-                pe.getTroco(),
+                pe.getTrocoDinheiro(),
+                pe.getTrocoPix(),
                 pe.getData()
         );
     }
@@ -125,7 +126,8 @@ public class AutoRepositoryAdapter implements AutoRepositoryPort {
         pe.setAutoId(p.getAutoId());
         pe.setMetodoPagamento(p.getMetodoPagamento());
         pe.setValor(p.getValor());
-        pe.setTroco(p.getTroco());
+        pe.setTrocoDinheiro(p.getTrocoDinheiro());
+        pe.setTrocoPix(p.getTrocoPix());
         pe.setData(p.getData());
         return pe;
     }

@@ -1460,6 +1460,10 @@
     const totalDinheiro = totalCarrosDinheiro + totalMotosDinheiro;
     const totalPix = totalCarrosPix + totalMotosPix;
     const trocoTotal = trocoCarros + trocoMotos;
+    // Troco devolvido, separado por método (aparece no cartão do método em que saiu).
+    const pagsPagos = items.filter(i => i.pago).flatMap(i => i.pagamentos || []);
+    const trocoEmDinheiro = pagsPagos.reduce((s,p) => s + (Number(p.trocoDinheiro)||0), 0);
+    const trocoEmPix = pagsPagos.reduce((s,p) => s + (Number(p.trocoPix)||0), 0);
 
     return (
             <div className="app-shell flex flex-col">
@@ -1493,8 +1497,8 @@
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-3">
-                  <StatCard icon="wallet" label="Dinheiro" value={formatBRL(totalDinheiro)} sub={`Carro ${formatBRL(totalCarrosDinheiro)} · Moto ${formatBRL(totalMotosDinheiro)}${trocoTotal>0 ? ' · troco abatido '+formatBRL(trocoTotal) : ''}`} />
-                  <StatCard icon="credit-card" label="Pix" value={formatBRL(totalPix)} sub={`Carro ${formatBRL(totalCarrosPix)} · Moto ${formatBRL(totalMotosPix)}`} />
+                  <StatCard icon="wallet" label="Dinheiro" value={formatBRL(totalDinheiro)} sub={`Carro ${formatBRL(totalCarrosDinheiro)} · Moto ${formatBRL(totalMotosDinheiro)}${trocoEmDinheiro>0 ? ' · troco abatido '+formatBRL(trocoEmDinheiro) : ''}`} />
+                  <StatCard icon="credit-card" label="Pix" value={formatBRL(totalPix)} sub={`Carro ${formatBRL(totalCarrosPix)} · Moto ${formatBRL(totalMotosPix)}${trocoEmPix>0 ? ' · troco abatido '+formatBRL(trocoEmPix) : ''}`} />
                 </div>
 
                 {(totalCarrosSemMetodo > 0 || totalMotosSemMetodo > 0) && (

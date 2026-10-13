@@ -24,8 +24,11 @@ public class PagamentoEntity {
     @Column(name = "valor", nullable = false)
     private double valor;
 
-    @Column(name = "troco")
-    private Double troco;
+    @Column(name = "troco_dinheiro")
+    private Double trocoDinheiro;
+
+    @Column(name = "troco_pix")
+    private Double trocoPix;
 
     @Column(name = "data", nullable = false)
     private Long data;
@@ -39,8 +42,11 @@ public class PagamentoEntity {
         if (data == null) {
             data = System.currentTimeMillis();
         }
-        if (troco == null || troco < 0) {
-            troco = 0.0;
+        if (trocoDinheiro == null || trocoDinheiro < 0) {
+            trocoDinheiro = 0.0;
+        }
+        if (trocoPix == null || trocoPix < 0) {
+            trocoPix = 0.0;
         }
     }
 
@@ -76,12 +82,20 @@ public class PagamentoEntity {
         this.valor = valor;
     }
 
-    public Double getTroco() {
-        return troco == null ? 0.0 : troco;
+    public Double getTrocoDinheiro() {
+        return trocoDinheiro == null ? 0.0 : trocoDinheiro;
     }
 
-    public void setTroco(Double troco) {
-        this.troco = troco;
+    public void setTrocoDinheiro(Double trocoDinheiro) {
+        this.trocoDinheiro = trocoDinheiro;
+    }
+
+    public Double getTrocoPix() {
+        return trocoPix == null ? 0.0 : trocoPix;
+    }
+
+    public void setTrocoPix(Double trocoPix) {
+        this.trocoPix = trocoPix;
     }
 
     public Long getData() {

@@ -16,14 +16,16 @@ public class PagamentoRequest {
     @Positive(message = "O valor deve ser positivo")
     private Double valor;
 
-    private Double troco;
+    private Double trocoDinheiro;
+    private Double trocoPix;
 
     public PagamentoRequest() {}
 
-    public PagamentoRequest(String metodo, Double valor, Double troco) {
+    public PagamentoRequest(String metodo, Double valor, Double trocoDinheiro, Double trocoPix) {
         this.metodo = metodo;
         this.valor = valor;
-        this.troco = troco;
+        this.trocoDinheiro = trocoDinheiro;
+        this.trocoPix = trocoPix;
     }
 
     public String getId() {
@@ -50,11 +52,19 @@ public class PagamentoRequest {
         this.valor = valor;
     }
 
-    public Double getTroco() {
-        return troco;
+    public Double getTrocoDinheiro() {
+        return trocoDinheiro;
     }
 
-    public void setTroco(Double troco) {
-        this.troco = troco;
+    public void setTrocoDinheiro(Double trocoDinheiro) {
+        this.trocoDinheiro = trocoDinheiro;
+    }
+
+    public Double getTrocoPix() {
+        return trocoPix;
+    }
+
+    public void setTrocoPix(Double trocoPix) {
+        this.trocoPix = trocoPix;
     }
 }

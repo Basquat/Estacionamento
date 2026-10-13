@@ -390,7 +390,7 @@ class SecurityAttackIntegrationTest {
             PagamentoRequest payment = new PagamentoRequest();
             payment.setMetodo("dinheiro");
             payment.setValor(-50.0);
-            payment.setTroco(0.0);
+            payment.setTrocoDinheiro(0.0);
 
             AutoCreateRequest request = new AutoCreateRequest("PAY123", "carro", 10.0, List.of(payment));
 
@@ -405,7 +405,7 @@ class SecurityAttackIntegrationTest {
             PagamentoRequest payment = new PagamentoRequest();
             payment.setMetodo("dinheiro");
             payment.setValor(100.0);
-            payment.setTroco(0.0);
+            payment.setTrocoDinheiro(0.0);
 
             AutoCreateRequest request = new AutoCreateRequest("PAY456", "carro", 10.0, List.of(payment));
 
@@ -420,7 +420,7 @@ class SecurityAttackIntegrationTest {
             PagamentoRequest p1 = new PagamentoRequest();
             p1.setMetodo("dinheiro");
             p1.setValor(20.0);
-            p1.setTroco(5.0);
+            p1.setTrocoDinheiro(5.0);
 
             PagamentoRequest p2 = new PagamentoRequest();
             p2.setMetodo("pix");

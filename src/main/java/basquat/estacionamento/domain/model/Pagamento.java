@@ -12,17 +12,19 @@ public class Pagamento {
     private String autoId;
     private String metodoPagamento;
     private double valor;
-    private Double troco;
+    private Double trocoDinheiro;
+    private Double trocoPix;
     private Long data;
 
     public Pagamento() {}
 
-    public Pagamento(String id, String autoId, String metodoPagamento, double valor, Double troco, Long data) {
+    public Pagamento(String id, String autoId, String metodoPagamento, double valor, Double trocoDinheiro, Double trocoPix, Long data) {
         this.id = id;
         this.autoId = autoId;
         this.metodoPagamento = metodoPagamento;
         this.valor = valor;
-        this.troco = troco;
+        this.trocoDinheiro = trocoDinheiro;
+        this.trocoPix = trocoPix;
         this.data = data;
     }
 
@@ -58,12 +60,20 @@ public class Pagamento {
         this.valor = valor;
     }
 
-    public Double getTroco() {
-        return troco == null ? 0.0 : troco;
+    public Double getTrocoDinheiro() {
+        return trocoDinheiro == null ? 0.0 : trocoDinheiro;
     }
 
-    public void setTroco(Double troco) {
-        this.troco = troco;
+    public void setTrocoDinheiro(Double trocoDinheiro) {
+        this.trocoDinheiro = trocoDinheiro;
+    }
+
+    public Double getTrocoPix() {
+        return trocoPix == null ? 0.0 : trocoPix;
+    }
+
+    public void setTrocoPix(Double trocoPix) {
+        this.trocoPix = trocoPix;
     }
 
     public Long getData() {

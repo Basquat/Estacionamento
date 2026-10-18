@@ -31,10 +31,21 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Preparar index.html com URL da API para o APK
+        run: |
+          API_URL="${{ github.event.inputs.api-base-url || 'https://estacionamento-uers.onrender.com/api' }}"
+          cp ../src/main/resources/static/index.html ./index.html.apk
+          sed -i "s|<meta name=\"api-base\" content=\"\" />|<meta name=\"api-base\" content=\"$API_URL\" />|" ./index.html.apk
+          grep '<meta name="api-base"' ./index.html.apk
+
       - name: Instalar dependências e criar projeto Android
         run: |
           npm install
           npx cap add android
+
+      - name: Copiar index.html preparado para o webDir do Capacitor
+        run: |
+          cp ./index.html.apk ../src/main/resources/static/index.html
 
       - name: Ícone do app
         run: npx capacitor-assets generate --android --iconBackgroundColor '#1d4ed8' --iconBackgroundColorDark '#1d4ed8'
@@ -46,6 +57,10 @@ jobs:
           grep -n "CAMERA\|camera" "$M"
 
       - run: npx cap sync android
+
+      - name: Restaurar index.html original (sem URL hardcoded)
+        run: |
+          git checkout ../src/main/resources/static/index.html
 
       - name: Chave de assinatura fixa (permite atualizar sem desinstalar)
         env:

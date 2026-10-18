@@ -5,8 +5,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * CORS só para /api/**: o APK (Capacitor) carrega a tela de https://localhost
- * e chama a API no Render. O site no próprio domínio não passa por aqui.
+ * CORS para /api/**: o APK (Capacitor) carrega a tela local e chama a API no Render.
+ * O site no próprio domínio não passa por aqui.
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
@@ -16,6 +16,7 @@ public class CorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins("https://localhost", "http://localhost", "capacitor://localhost")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                .allowCredentials(false);
     }
 }

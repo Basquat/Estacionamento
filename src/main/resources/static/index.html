@@ -6,6 +6,7 @@
   <!-- Vazio na web. O workflow do APK preenche com https://.../api -->
   <meta name="api-base" content="" />
   <title>Estaciona+ • Controle de Placas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d4ed8' rx='6'/%3E%3Ctext x='16' y='22' font-size='20' text-anchor='middle' fill='white' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -93,6 +94,13 @@
 
   const API_ROOT = (document.querySelector('meta[name="api-base"]')?.content || (window.Capacitor?.isNativePlatform?.() ? '/api' : '')).replace(/\/+$/, '');
   const API_BASE = API_ROOT + '/Automoveis';
+
+  // Estado de conexao com o servidor (SSE / eventos). Nao bloqueia o carregamento
+  // principal da tela: se o Render estiver hibernando, o usuario ainda opera
+  // normalmente e avisa visualmente quando acordar.
+  const [servidorAcordado, setServidorAcordado] = useState(false);
+  const [servidorAviso, setServidorAviso] = useState('');
+  const eventosReconectRef = useRef(null);
 
   // "Início" já traz tudo que é preciso para operar (resumo + cadastro +
   // lista), por isso não existe um botão "Placas" separado.
@@ -1172,11 +1180,11 @@
     // outro dispositivo via SSE) e NUNCA desmonta a tela — assim o que o
     // usuário está digitando (form de adicionar, painel de pagamento aberto
     // etc.) não some quando alguém em outro aparelho salva algo.
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [tab, setTab] = useState('todos');
-    const [search, setSearch] = useState('');
-    const [paymentFilter, setPaymentFilter] = useState('todos');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState('todos');
+  const [search, setSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('todos');
 
     // `navId` = item do menu clicado (para destacar). A TELA é derivada dele:
     // só Relatórios e Blacklist têm tela própria; o resto fica na inicial.
@@ -1216,35 +1224,87 @@
 
     useEffect(()=>{ loadItems(); loadBlacklist(); }, []);
 
-    // Atualização em tempo real via Server-Sent Events. O EventSource reconecta
-    // sozinho se a conexão cair (comportamento padrão do browser).
+    // Atualizacao em tempo real via Server-Sent Events. Nao bloqueia o
+    // carregamento principal: se o servidor estiver hibernando (cold start do
+    // Render free), a tela ja esta operavel e avisa visualmente.
+    // Reconecta com backoff exponencial e timeout curto.
     useEffect(()=>{
-      const src = new EventSource(API_ROOT + '/eventos');
-      let timer = null;
       let vivo = true;
+      let timer = null;
+      let tentativas = 0;
+      const MAX_TENTATIVAS = 8;
 
-      const agendarReload = () => {
+      function conectar(){
+        if(!vivo) return;
+        const src = new EventSource(API_ROOT + '/eventos');
+        let estabelecido = false;
+
+        const tTimeout = setTimeout(()=>{
+          if(!estabelecido){
+            src.close();
+            setServidorAcordado(false);
+            setServidorAviso('Acordando servidor… (tentativa ' + tentativas + '/' + MAX_TENTATIVAS + ')');
+            tentativas++;
+            if(tentativas <= MAX_TENTATIVAS){
+              const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
+              timer = setTimeout(conectar, atraso);
+            } else {
+              setServidorAviso('Servidor demorando para responder. Tente novamente em instantes.');
+            }
+          }
+        }, 8000);
+
+        src.addEventListener('atualizacao', ()=>{
+          if(!estabelecido){
+            estabelecido = true;
+            clearTimeout(tTimeout);
+            tentativas = 0;
+            setServidorAcordado(true);
+            setServidorAviso('');
+          }
+          agendarReload();
+        });
+
+        src.onerror = ()=>{
+          src.close();
+          if(!estabelecido && vivo){
+            setServidorAcordado(false);
+            setServidorAviso('Acordando servidor… (tentativa ' + tentativas + '/' + MAX_TENTATIVAS + ')');
+            tentativas++;
+            if(tentativas <= MAX_TENTATIVAS){
+              const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
+              timer = setTimeout(conectar, atraso);
+            } else {
+              setServidorAviso('Servidor demorando para responder. Tente novamente em instantes.');
+            }
+          }
+        };
+
+        eventosReconectRef.current = () => { src.close(); vivo = false; };
+      }
+
+      function agendarReload(){
         if(timer) clearTimeout(timer);
-        // debounce: uma rajada de eventos (ex.: "limpar tudo") vira 1 reload.
-        timer = setTimeout(() => {
+        timer = setTimeout(()=>{
           if(!vivo) return;
           const agora = Date.now();
           ecosLocais.current = ecosLocais.current.filter(t => agora - t < 4000);
           if(ecosLocais.current.length > 0){
-            ecosLocais.current.shift(); // consome o eco da própria ação
+            ecosLocais.current.shift();
             return;
           }
           loadItems({ silent: true });
           loadBlacklist();
         }, 350);
+      }
+
+      conectar();
+
+      return () => {
+        vivo = false;
+        if(timer) clearTimeout(timer);
+        if(eventosReconectRef.current) eventosReconectRef.current();
       };
-
-      src.addEventListener('atualizacao', agendarReload);
-      // ATENÇÃO: onerror é propriedade (atribuição), não um método. Chamar
-      // `src.onerror(fn)` executaria `null` como função e quebraria o app.
-      src.onerror = () => { /* EventSource já reconecta sozinho */ };
-
-      return () => { vivo = false; if(timer) clearTimeout(timer); src.close(); };
     }, []);
 
     useEffect(()=>{
@@ -1483,6 +1543,13 @@
                       <div className="flex items-center justify-center py-24 gap-2 text-zinc-500 dark:text-zinc-400">
                         <Icon name="loader-circle" className="w-5 h-5 animate-spin" />
                         Carregando...
+                      </div>
+              )}
+
+              {!servidorAcordado && servidorAviso && (
+                      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-900/90 text-amber-100 text-xs shadow-lg animate-fadeIn">
+                        <Icon name="loader-circle" className="w-3.5 h-3.5 animate-spin" />
+                        {servidorAviso}
                       </div>
               )}
 

@@ -1168,12 +1168,6 @@
     const [theme, setTheme] = useTheme();
     const [items, setItems] = useState([]);
     const [blacklist, setBlacklist] = useState([]);
-    // Estado de conexao com o servidor (SSE / eventos). Nao bloqueia o carregamento
-    // principal da tela: se o Render estiver hibernando, o usuario ainda opera
-    // normalmente e avisa visualmente quando acordar.
-    const [servidorAcordado, setServidorAcordado] = useState(false);
-    const [servidorAviso, setServidorAviso] = useState('');
-    const eventosReconectRef = useRef(null);
     // `loading` só é usado na primeira carga (tela cheia de "Carregando...").
     // `refreshing` é usado nas atualizações em segundo plano (disparadas por
     // outro dispositivo via SSE) e NUNCA desmonta a tela — assim o que o
@@ -1223,10 +1217,8 @@
 
     useEffect(()=>{ loadItems(); loadBlacklist(); }, []);
 
-    // Atualizacao em tempo real via Server-Sent Events. Nao bloqueia o
-    // carregamento principal: se o servidor estiver hibernando (cold start do
-    // Render free), a tela ja esta operavel e avisa visualmente.
-    // Reconecta com backoff exponencial e timeout curto.
+    // Atualização em tempo real via Server-Sent Events. Reconecta automaticamente
+    // em background sem bloquear a UI. Mantém a tela operável durante cold start.
     useEffect(()=>{
       let vivo = true;
       let timer = null;
@@ -1241,25 +1233,19 @@
         const tTimeout = setTimeout(()=>{
           if(!estabelecido){
             src.close();
-            setServidorAcordado(false);
-            setServidorAviso('Acordando servidor… (tentativa ' + tentativas + '/' + MAX_TENTATIVAS + ')');
             tentativas++;
             if(tentativas <= MAX_TENTATIVAS){
               const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
               timer = setTimeout(conectar, atraso);
-            } else {
-              setServidorAviso('Servidor demorando para responder. Tente novamente em instantes.');
             }
           }
-        }, 8000);
+        }, 5000);
 
         src.addEventListener('atualizacao', ()=>{
           if(!estabelecido){
             estabelecido = true;
             clearTimeout(tTimeout);
             tentativas = 0;
-            setServidorAcordado(true);
-            setServidorAviso('');
           }
           agendarReload();
         });
@@ -1267,19 +1253,13 @@
         src.onerror = ()=>{
           src.close();
           if(!estabelecido && vivo){
-            setServidorAcordado(false);
-            setServidorAviso('Acordando servidor… (tentativa ' + tentativas + '/' + MAX_TENTATIVAS + ')');
             tentativas++;
             if(tentativas <= MAX_TENTATIVAS){
               const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
               timer = setTimeout(conectar, atraso);
-            } else {
-              setServidorAviso('Servidor demorando para responder. Tente novamente em instantes.');
             }
           }
         };
-
-        eventosReconectRef.current = () => { src.close(); vivo = false; };
       }
 
       function agendarReload(){
@@ -1302,7 +1282,6 @@
       return () => {
         vivo = false;
         if(timer) clearTimeout(timer);
-        if(eventosReconectRef.current) eventosReconectRef.current();
       };
     }, []);
 
@@ -1542,13 +1521,6 @@
                       <div className="flex items-center justify-center py-24 gap-2 text-zinc-500 dark:text-zinc-400">
                         <Icon name="loader-circle" className="w-5 h-5 animate-spin" />
                         Carregando...
-                      </div>
-              )}
-
-              {!servidorAcordado && servidorAviso && (
-                      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-900/90 text-amber-100 text-xs shadow-lg animate-fadeIn">
-                        <Icon name="loader-circle" className="w-3.5 h-3.5 animate-spin" />
-                        {servidorAviso}
                       </div>
               )}
 

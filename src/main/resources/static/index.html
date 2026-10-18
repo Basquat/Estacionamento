@@ -95,13 +95,6 @@
   const API_ROOT = (document.querySelector('meta[name="api-base"]')?.content || (window.Capacitor?.isNativePlatform?.() ? '/api' : '')).replace(/\/+$/, '');
   const API_BASE = API_ROOT + '/Automoveis';
 
-  // Estado de conexao com o servidor (SSE / eventos). Nao bloqueia o carregamento
-  // principal da tela: se o Render estiver hibernando, o usuario ainda opera
-  // normalmente e avisa visualmente quando acordar.
-  const [servidorAcordado, setServidorAcordado] = useState(false);
-  const [servidorAviso, setServidorAviso] = useState('');
-  const eventosReconectRef = useRef(null);
-
   // "Início" já traz tudo que é preciso para operar (resumo + cadastro +
   // lista), por isso não existe um botão "Placas" separado.
   const ABAS = [
@@ -1175,6 +1168,12 @@
     const [theme, setTheme] = useTheme();
     const [items, setItems] = useState([]);
     const [blacklist, setBlacklist] = useState([]);
+    // Estado de conexao com o servidor (SSE / eventos). Nao bloqueia o carregamento
+    // principal da tela: se o Render estiver hibernando, o usuario ainda opera
+    // normalmente e avisa visualmente quando acordar.
+    const [servidorAcordado, setServidorAcordado] = useState(false);
+    const [servidorAviso, setServidorAviso] = useState('');
+    const eventosReconectRef = useRef(null);
     // `loading` só é usado na primeira carga (tela cheia de "Carregando...").
     // `refreshing` é usado nas atualizações em segundo plano (disparadas por
     // outro dispositivo via SSE) e NUNCA desmonta a tela — assim o que o

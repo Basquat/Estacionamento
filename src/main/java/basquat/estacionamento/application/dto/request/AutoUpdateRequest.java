@@ -9,6 +9,7 @@ public class AutoUpdateRequest {
     private Double valor;
     private Double valorPrevisto;
     private Boolean pago;
+    private Long saida; // null = não mexe; 0 = volta ao pátio
     private List<PagamentoRequest> pagamentos;
     private String foto; // data URL base64; null = sem foto
 
@@ -76,5 +77,13 @@ public class AutoUpdateRequest {
 
     public void setFoto(String foto) {
         this.foto = foto;
+    }
+
+    public Long getSaida() {
+        return saida;
+    }
+
+    public void setSaida(Long saida) {
+        this.saida = saida;
     }
 }

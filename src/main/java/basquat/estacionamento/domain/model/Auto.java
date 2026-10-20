@@ -16,6 +16,7 @@ public class Auto {
     private Double valorPrevisto;
     private Boolean pago;
     private Long entrada;
+    private Long saida; // epoch ms; null = ainda no pátio
     private List<Pagamento> pagamentos = new ArrayList<>();
     private String foto; // data URL base64; null = sem foto
 
@@ -104,5 +105,13 @@ public class Auto {
 
     public void setFoto(String foto) {
         this.foto = foto;
+    }
+
+    public Long getSaida() {
+        return saida;
+    }
+
+    public void setSaida(Long saida) {
+        this.saida = saida;
     }
 }

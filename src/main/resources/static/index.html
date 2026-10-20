@@ -237,6 +237,7 @@
     const [pronta, setPronta] = useState(false);
     const [temFlash, setTemFlash] = useState(false);
     const [flash, setFlash] = useState(false);
+    const [flashErro, setFlashErro] = useState(false);
 
     useEffect(()=>{
       let ativo = true;
@@ -247,8 +248,10 @@
           streamRef.current = stream;
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
-          setTemFlash(!!stream.getVideoTracks()[0]?.getCapabilities?.().torch);
           setPronta(true);
+          // Alguns aparelhos só informam `torch` alguns instantes depois do play().
+          const temTorch = () => !!stream.getVideoTracks()[0]?.getCapabilities?.().torch;
+          [0, 400, 1200].forEach(ms => setTimeout(()=>{ if(ativo && temTorch()) setTemFlash(true); }, ms));
         }catch(e){
           if(ativo) setErro('A câmera ao vivo não está disponível neste aplicativo/navegador. Use a câmera do aparelho:');
         }
@@ -259,10 +262,16 @@
     }, []);
 
     async function alternarFlash(){
+      const track = streamRef.current?.getVideoTracks()[0];
+      const novo = !flash;
       try{
-        await streamRef.current.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: !flash }] });
-        setFlash(!flash);
-      }catch(e){ setTemFlash(false); }
+        await track.applyConstraints({ advanced: [{ torch: novo }] });
+      }catch(e1){
+        // Alguns aparelhos só aceitam a restrição fora de `advanced`.
+        try{ await track.applyConstraints({ torch: novo }); }
+        catch(e2){ setFlashErro(true); setTimeout(()=>setFlashErro(false), 2500); return; }
+      }
+      setFlash(novo);
     }
 
     function capturar(){
@@ -276,29 +285,44 @@
       onCapture(canvas.toDataURL('image/jpeg', quality));
     }
 
+    const btnRedondo = 'w-12 h-12 rounded-full inline-flex items-center justify-center backdrop-blur bg-black/40 text-white active:scale-95 transition';
     return (
-      <div className="fixed inset-0 z-[70] bg-black flex flex-col">
-        <div className="flex-1 min-h-0 flex items-center justify-center">
-          {erro
-            ? <div className="text-white text-sm text-center p-6 grid gap-4 justify-items-center">
-                <div>{erro}</div>
-                <label className="cursor-pointer px-5 py-3 rounded-xl bg-white text-black font-semibold">
-                  Abrir câmera do aparelho
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile}/>
-                </label>
+      <div className="fixed inset-0 z-[70] bg-black">
+        {erro
+          ? <div className="absolute inset-0 text-white text-sm text-center p-6 grid gap-4 content-center justify-items-center">
+              <div className="max-w-xs">{erro}</div>
+              <label className="cursor-pointer px-5 py-3 rounded-2xl bg-white text-black font-semibold">
+                Abrir câmera do aparelho
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile}/>
+              </label>
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl bg-white/15">Cancelar</button>
+            </div>
+          : <>
+              <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-contain"/>
+              {!pronta && <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm gap-2"><Icon name="loader-circle" className="w-4 h-4 animate-spin" /> Abrindo câmera...</div>}
+              {/* Moldura-guia para enquadrar a placa */}
+              <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[78%] max-w-md aspect-[3/2] rounded-3xl border-2 border-white/50"></div>
+
+              <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-gradient-to-b from-black/60 to-transparent">
+                <button type="button" onClick={onClose} aria-label="Fechar câmera" className={btnRedondo}>
+                  <Icon name="x" className="w-5 h-5" />
+                </button>
+                {temFlash && (
+                  <button type="button" onClick={alternarFlash} aria-pressed={flash} aria-label={flash ? 'Desligar flash' : 'Ligar flash'}
+                          className={'w-12 h-12 rounded-full inline-flex items-center justify-center active:scale-95 transition ' + (flash ? 'bg-amber-400 text-black' : 'backdrop-blur bg-black/40 text-white')}>
+                    <Icon name={flash ? 'zap' : 'zap-off'} className="w-5 h-5" />
+                  </button>
+                )}
               </div>
-            : <video ref={videoRef} playsInline muted className="max-w-full max-h-full"/>}
-        </div>
-        <div className="flex items-center justify-center gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <button type="button" onClick={onClose} className="px-4 py-3 rounded-xl bg-white/15 text-white">Cancelar</button>
-          {!erro && temFlash && (
-            <button type="button" onClick={alternarFlash} aria-pressed={flash}
-                    className={'px-4 py-3 rounded-xl inline-flex items-center gap-2 ' + (flash ? 'bg-amber-400 text-black' : 'bg-white/15 text-white')}>
-              <Icon name="zap" className="w-4 h-4" /> Flash {flash ? 'ligado' : 'desligado'}
-            </button>
-          )}
-          {!erro && <button type="button" onClick={capturar} disabled={!pronta} className="px-6 py-3 rounded-xl bg-white text-black font-semibold disabled:opacity-50">Tirar foto</button>}
-        </div>
+              {flashErro && <div className="absolute top-20 inset-x-0 text-center text-xs text-white"><span className="px-3 py-1.5 rounded-full bg-black/70">Flash indisponível neste aparelho</span></div>}
+
+              <div className="absolute bottom-0 inset-x-0 flex items-center justify-center p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/70 to-transparent">
+                <button type="button" onClick={capturar} disabled={!pronta} aria-label="Tirar foto"
+                        className="w-20 h-20 rounded-full border-4 border-white p-1.5 disabled:opacity-40 active:scale-95 transition">
+                  <span className="block w-full h-full rounded-full bg-white"></span>
+                </button>
+              </div>
+            </>}
       </div>
     )
   }
@@ -364,6 +388,7 @@
       {id:'todos', label:'Todos', icon:'list'},
       {id:'carro', label:'Carros', icon:'car'},
       {id:'moto', label:'Motos', icon:'motorbike'},
+      {id:'sairam', label:'Saíram', icon:'log-out'},
     ];
     return (
             <div className="flex w-full min-w-0 overflow-x-auto gap-2 pb-1">
@@ -755,6 +780,12 @@
                   <div className="font-semibold tracking-wide">{item.placa}</div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(item.entrada).toLocaleString('pt-BR')}</div>
                 </div>
+                <button type="button" onClick={()=>onUpdate(item.id, { saida: item.saida ? 0 : Date.now() })}
+                        title={item.saida ? 'Voltar ao pátio' : 'Marcar que saiu'}
+                        className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <Icon name="log-out" className="w-4 h-4" />
+                  {item.saida ? 'Voltar' : 'Saiu'}
+                </button>
               </div>
 
               {/* Linha 2: status (pode ser longo/quebrar) à esquerda, valor+ações
@@ -872,7 +903,7 @@
 
   function List({items, search, tab, paymentFilter, ...handlers}){
     const filtered = items.filter(it =>
-            (tab==='todos' || it.tipo===tab) &&
+            (tab==='sairam' ? !!it.saida : (!it.saida && (tab==='todos' || it.tipo===tab))) &&
             it.placa.toLowerCase().includes(search.toLowerCase()) &&
             (paymentFilter==='todos' ||
                     (paymentFilter==='pagos' && it.pago) ||
@@ -1169,12 +1200,9 @@
     const [items, setItems] = useState([]);
     const [blacklist, setBlacklist] = useState([]);
     // `loading` só é usado na primeira carga (tela cheia de "Carregando...").
-    // `refreshing` é usado nas atualizações em segundo plano (disparadas por
-    // outro dispositivo via SSE) e NUNCA desmonta a tela — assim o que o
-    // usuário está digitando (form de adicionar, painel de pagamento aberto
-    // etc.) não some quando alguém em outro aparelho salva algo.
+    // As atualizações em segundo plano (silent) NÃO mexem em `loading`: nunca
+    // desmontam a tela, então o que o usuário digita não some.
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState('todos');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('todos');
@@ -1221,67 +1249,69 @@
     // em background sem bloquear a UI. Mantém a tela operável durante cold start.
     useEffect(()=>{
       let vivo = true;
-      let timer = null;
+      let timer = null;      // debounce do reload
+      let timerCon = null;   // reconexão
+      let src = null;
       let tentativas = 0;
-      const MAX_TENTATIVAS = 8;
+      let jaConectou = false;
 
       function conectar(){
         if(!vivo) return;
-        const src = new EventSource(API_ROOT + '/eventos');
-        let estabelecido = false;
+        src = new EventSource(API_ROOT + '/eventos');
 
-        const tTimeout = setTimeout(()=>{
-          if(!estabelecido){
-            src.close();
-            tentativas++;
-            if(tentativas <= MAX_TENTATIVAS){
-              const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
-              timer = setTimeout(conectar, atraso);
-            }
-          }
-        }, 5000);
-
-        src.addEventListener('atualizacao', ()=>{
-          if(!estabelecido){
-            estabelecido = true;
-            clearTimeout(tTimeout);
-            tentativas = 0;
-          }
-          agendarReload();
+        // O servidor manda "conectado" ao abrir. Numa RE-conexão, recarrega para
+        // pegar o que mudou enquanto o stream estava fora (timeout de 5 min,
+        // cold start do Render, app em segundo plano).
+        src.addEventListener('conectado', ()=>{
+          tentativas = 0;
+          if(jaConectou) agendarReload(true);
+          jaConectou = true;
         });
+        src.addEventListener('atualizacao', ()=> agendarReload(false));
 
         src.onerror = ()=>{
           src.close();
-          if(!estabelecido && vivo){
-            tentativas++;
-            if(tentativas <= MAX_TENTATIVAS){
-              const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
-              timer = setTimeout(conectar, atraso);
-            }
-          }
+          if(!vivo) return;
+          tentativas++;
+          const atraso = Math.min(1000 * Math.pow(2, tentativas - 1), 30000);
+          timerCon = setTimeout(conectar, atraso);
         };
       }
 
-      function agendarReload(){
+      function agendarReload(forcar){
         if(timer) clearTimeout(timer);
         timer = setTimeout(()=>{
           if(!vivo) return;
-          const agora = Date.now();
-          ecosLocais.current = ecosLocais.current.filter(t => agora - t < 4000);
-          if(ecosLocais.current.length > 0){
-            ecosLocais.current.shift();
-            return;
+          if(!forcar){
+            const agora = Date.now();
+            ecosLocais.current = ecosLocais.current.filter(t => agora - t < 4000);
+            if(ecosLocais.current.length > 0){
+              ecosLocais.current.shift();
+              return;
+            }
           }
           loadItems({ silent: true });
           loadBlacklist();
         }, 350);
       }
 
+      // Celular/WebView volta do segundo plano: o stream pode ter morrido sem
+      // avisar. Recarrega e, se a conexão caiu, reconecta já.
+      function aoVoltar(){
+        if(document.visibilityState !== 'visible' || !vivo) return;
+        agendarReload(true);
+        if(!src || src.readyState === 2){ clearTimeout(timerCon); tentativas = 0; conectar(); }
+      }
+      document.addEventListener('visibilitychange', aoVoltar);
+
       conectar();
 
       return () => {
         vivo = false;
         if(timer) clearTimeout(timer);
+        clearTimeout(timerCon);
+        document.removeEventListener('visibilitychange', aoVoltar);
+        if(src) src.close();
       };
     }, []);
 
@@ -1293,7 +1323,7 @@
     // busca os dados novos e atualiza a lista SEM trocar a tela toda por um
     // spinner e sem interromper o que o usuário estiver fazendo.
     async function loadItems({ silent = false } = {}){
-      if(silent) setRefreshing(true); else setLoading(true);
+      if(!silent) setLoading(true);
       try {
         const res = await fetch(API_BASE);
         if (!res.ok) throw new Error(await parseErro(res, 'Falha ao carregar dados'));
@@ -1302,10 +1332,11 @@
         const lista = Array.isArray(data) ? data : (data.automoveis || []);
         setItems(lista.map(migrateItem));
       } catch (err) {
-        if(!silent) alert(err.message || 'Erro ao carregar dados');
-        else console.error('Falha ao sincronizar em segundo plano:', err);
+        // Sem aviso ao usuário (ex.: servidor acordando): tenta de novo sozinho.
+        console.error('Falha ao carregar dados:', err);
+        setTimeout(()=>loadItems({ silent: true }), 5000);
       } finally {
-        if(silent) setRefreshing(false); else setLoading(false);
+        if(!silent) setLoading(false);
       }
     }
 
@@ -1510,13 +1541,6 @@
               {/* pb-24 no mobile: espaço para o menu fixo de baixo não cobrir
                   o último item quando a tela é curta. */}
               <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 md:pb-8">
-              {refreshing && (
-                      <div className="fixed top-16 right-3 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/90 dark:bg-zinc-100/90 text-white dark:text-zinc-900 text-xs shadow-lg animate-fadeIn">
-                        <Icon name="loader-circle" className="w-3.5 h-3.5 animate-spin" />
-                        Sincronizando...
-                      </div>
-              )}
-
               {loading && (
                       <div className="flex items-center justify-center py-24 gap-2 text-zinc-500 dark:text-zinc-400">
                         <Icon name="loader-circle" className="w-5 h-5 animate-spin" />
@@ -1528,8 +1552,8 @@
               <div className="grid grid-cols-1 gap-8">
               <Section id="inicio" title="Resumo" subtitle="Visão geral rápida do caixa e movimentação">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <StatCard icon="car" label="Carros" value={formatBRL(totalCarros)} sub={`${carros.length} no pátio · ${formatBRL(totalCarrosPago)} pago`} />
-                  <StatCard icon="motorbike" label="Motos" value={formatBRL(totalMotos)} sub={`${motos.length} no pátio · ${formatBRL(totalMotosPago)} pago`} />
+                  <StatCard icon="car" label="Carros" value={formatBRL(totalCarros)} sub={`${carros.filter(i=>!i.saida).length} no pátio · ${formatBRL(totalCarrosPago)} pago`} />
+                  <StatCard icon="motorbike" label="Motos" value={formatBRL(totalMotos)} sub={`${motos.filter(i=>!i.saida).length} no pátio · ${formatBRL(totalMotosPago)} pago`} />
                   <StatCard icon="badge-check" label="Arrecadado" value={formatBRL(totalArrecadado)} sub="Carros + motos pagos" />
                   <StatCard icon="alarm-clock" label="Pendente" value={formatBRL(totalPendente)} sub={`Carro ${formatBRL(pendCarros)} · Moto ${formatBRL(pendMotos)}`} />
                 </div>

@@ -170,4 +170,15 @@ class FluxoCompletoMockMvcTest {
         mvc.perform(delete("/Blacklist/" + id)).andExpect(status().isNoContent());
         mvc.perform(delete("/Blacklist/" + id)).andExpect(status().isNotFound());
     }
+
+    @Test
+    void saidaPersisteEVoltaAoPatio() throws Exception {
+        String id = JsonPath.read(criar("{\"placa\":\"SAI-0001\",\"tipo\":\"carro\",\"valor\":10}"), "$.id");
+        mvc.perform(put("/Automoveis/" + id).contentType(MediaType.APPLICATION_JSON).content("{\"saida\":1700000000000}"))
+                .andExpect(status().isOk());
+        assertThat(JsonPath.<Number>read(lerPorId(id), "$.saida").longValue()).isEqualTo(1700000000000L);
+        mvc.perform(put("/Automoveis/" + id).contentType(MediaType.APPLICATION_JSON).content("{\"saida\":0}"))
+                .andExpect(status().isOk());
+        assertThat(JsonPath.<Object>read(lerPorId(id), "$.saida")).isNull();
+    }
 }

@@ -36,6 +36,9 @@ public class AutoEntity {
     @Column(name = "entrada", nullable = false)
     private Long entrada;
 
+    @Column(name = "saida")
+    private Long saida;
+
     @Column(name = "foto", columnDefinition = "TEXT")
     private String foto;
 
@@ -122,5 +125,13 @@ public class AutoEntity {
 
     public void setFoto(String foto) {
         this.foto = foto;
+    }
+
+    public Long getSaida() {
+        return saida;
+    }
+
+    public void setSaida(Long saida) {
+        this.saida = saida;
     }
 }
